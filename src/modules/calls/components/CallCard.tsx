@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { callCardStyles } from '../styles/CallCard.styles';
+import { colors } from '../../../styles/colors';
 import type { CallLog } from '../../../data/dummyCalls';
 
 interface CallCardProps {
@@ -91,15 +92,4 @@ export const CallCard: React.FC<CallCardProps> = ({
       </View>
     </TouchableOpacity>
   );
-};
-
-// Add colors import (you should already have this in your colors.ts)
-const colors = {
-  callIncoming: '#4CAF50',
-  callOutgoing: '#2196F3',
-  callMissed: '#F44336',
-  textSecondary: '#666666',
-  whatsappTeal: '#075E54',
-  backgroundGray: '#F0F0F0',
-  white: '#FFFFFF',
 };

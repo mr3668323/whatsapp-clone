@@ -1,9 +1,10 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { BottomTabNavigator } from './BottomTabNavigator';
 import { ChatDetailScreen } from '../modules/home/screens/ChatDetailScreen';
 import { SettingsScreen } from '../modules/settings/screens/SettingsScreen';
 import { ProfileScreen } from '../modules/settings/screens/ProfileScreen';
+import { NewChatScreen } from '../modules/chat/screens/NewChatScreen'; // ✅ ADD THIS
 import { useBackHandler } from '../hooks/useBackHandler';
 import type { RootStackParamList } from '../types/navigation';
 
@@ -30,6 +31,7 @@ export const AppStack: React.FC = () => {
           gestureEnabled: false,
         }}
       />
+
       <Stack.Screen
         name="ChatDetail"
         component={ChatDetailScreen}
@@ -38,6 +40,17 @@ export const AppStack: React.FC = () => {
           gestureEnabled: true,
         }}
       />
+
+      {/* ✅ NEW CHAT SCREEN */}
+      <Stack.Screen
+        name="NewChat"
+        component={NewChatScreen}
+        options={{
+          animation: 'slide_from_right',
+          gestureEnabled: true,
+        }}
+      />
+
       <Stack.Screen
         name="Settings"
         component={SettingsScreen}
@@ -46,6 +59,7 @@ export const AppStack: React.FC = () => {
           gestureEnabled: true,
         }}
       />
+
       <Stack.Screen
         name="Profile"
         component={ProfileScreen}

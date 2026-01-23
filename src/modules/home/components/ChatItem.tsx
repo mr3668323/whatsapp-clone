@@ -54,7 +54,7 @@ export const ChatItem: React.FC<ChatItemProps> = ({ chat, onPress }) => {
           <Text style={chatItemStyles.name}>{chat.name}</Text>
           <Text style={chatItemStyles.time}>{formatTime(chat.timestamp)}</Text>
         </View>
-        <View style={{ flexDirection: "row", alignItems: "center" }}>
+        <View style={chatItemStyles.messageRow}>
           <Text
             style={[chatItemStyles.message, chat.unreadCount > 0 && chatItemStyles.messageActive]}
             numberOfLines={1}

@@ -939,10 +939,7 @@ export const OTPVerificationScreen: React.FC<OTPVerificationScreenProps> = ({ ro
 
                     <ScrollView
                         style={otpVerificationStyles.scrollView}
-                        contentContainerStyle={[
-                            otpVerificationStyles.scrollContent,
-                            { paddingBottom: 100 }
-                        ]}
+                        contentContainerStyle={otpVerificationStyles.scrollContentWithKeyboard}
                         keyboardShouldPersistTaps="handled"
                         showsVerticalScrollIndicator={false}
                         bounces={false}
@@ -1029,7 +1026,7 @@ export const OTPVerificationScreen: React.FC<OTPVerificationScreenProps> = ({ ro
                             activeOpacity={0.7}
                         >
                             {isVerifying ? (
-                                <ActivityIndicator color="#FFFFFF" />
+                                <ActivityIndicator color={colors.buttonTextPrimary} />
                             ) : otpVerified ? (
                                 <Text style={otpVerificationStyles.verifyButtonText}>
                                     Verified ✓

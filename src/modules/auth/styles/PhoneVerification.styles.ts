@@ -49,6 +49,9 @@ export const phoneVerificationStyles = StyleSheet.create({
     paddingTop: spacing.md,
     paddingBottom: spacing.lg,
   },
+  scrollSpacer: {
+    height: spacing["5xl"] + spacing.base, // 80px equivalent
+  },
   title: {
     fontSize: typography.fontSize["3xl"],
     fontWeight: typography.fontWeight.bold,

@@ -6,6 +6,7 @@ import { UpdatesScreen } from "../modules/updates/screens/UpdatesScreen"
 import { CallsScreen } from "../modules/calls/screens/CallsScreen"
 import { CommunitiesScreen } from "../modules/communities/screens/CommunitiesScreen"
 import { colors } from "../styles/colors"
+import { bottomTabNavigatorStyles } from "./styles/BottomTabNavigator.styles"
 import type { BottomTabParamList } from "../types/navigation"
 
 const Tab = createBottomTabNavigator<BottomTabParamList>()
@@ -24,22 +25,16 @@ const TabIcon: React.FC<TabIconProps> = ({ name, focused }) => {
     }
 
     return (
-        <View
-            style={{
-                justifyContent: "center",
-                alignItems: "center",
-                paddingVertical: 8,
-            }}
-        >
-            <Text style={{ fontSize: 24 }}>{iconMap[name] || "📱"}</Text>
+        <View style={bottomTabNavigatorStyles.tabIconContainer}>
+            <Text style={bottomTabNavigatorStyles.tabIconEmoji}>{iconMap[name] || "📱"}</Text>
             <Text
-                style={{
-                    fontSize: 11,
-                    marginTop: 4,
-                    color: focused ? colors.buttonPrimary : colors.textTertiary,
-                    fontWeight: focused ? "600" : "400",
-                    width: "100%",
-                }}
+                style={[
+                    bottomTabNavigatorStyles.tabLabel,
+                    {
+                        color: focused ? colors.buttonPrimary : colors.textTertiary,
+                        fontWeight: focused ? typography.fontWeight.semibold : typography.fontWeight.normal,
+                    },
+                ]}
             >
                 {name}
             </Text>
@@ -53,14 +48,7 @@ export const BottomTabNavigator: React.FC = () => {
             initialRouteName="Chats"
             screenOptions={({ route }) => ({
                 headerShown: false,
-                tabBarStyle: {
-                    backgroundColor: colors.background,
-                    borderTopColor: colors.border,
-                    borderTopWidth: 1,
-                    paddingTop: 0,
-                    paddingBottom: 0,
-                    height: 65,
-                },
+                tabBarStyle: bottomTabNavigatorStyles.tabBarStyle,
                 tabBarIcon: ({ focused }) => <TabIcon name={route.name} focused={focused} />,
                 tabBarLabel: () => null,
             })}

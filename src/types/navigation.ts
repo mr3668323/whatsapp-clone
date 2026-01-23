@@ -14,6 +14,7 @@ export type RootStackParamList = {
   Settings: undefined;
   Profile: undefined;
   ChatDetail: { chatId: string; chatName: string }
+  NewChat: undefined;
 }
 
 export type BottomTabParamList = {

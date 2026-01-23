@@ -126,3 +126,15 @@ ios/GoogleService-Info.plist
 
 # Backend (not used - React Native Firebase only)
 backend/
+
+# Markdown files
+*.md
+README.md
+PROJECT_DOCUMENTATION.md
+**/*.md
+
+# Useless/unused files
+android-clean-build.bat
+android-clean-build.sh
+*.sh
+*.bat

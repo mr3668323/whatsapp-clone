@@ -139,7 +139,8 @@ export const getUserByPhoneNumber = async (phoneNumber: string): Promise<UserDat
     console.log('[userService] User not found by phone number:', phoneNumber);
     return null;
   } catch (error: any) {
-    console.error('[userService] Error getting user by phone number:', error);
+    // Use console.log instead of console.error to avoid red-screen error overlay
+    console.log('[userService] Error getting user by phone number (non-fatal):', error?.message || error);
     return null;
   }
 };

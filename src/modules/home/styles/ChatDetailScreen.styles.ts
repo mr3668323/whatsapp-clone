@@ -184,6 +184,11 @@ export const chatDetailScreenStyles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  cardPlayButtonText: {
+    fontSize: typography.fontSize.xl,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textLight,
+  },
   cardTitle: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,

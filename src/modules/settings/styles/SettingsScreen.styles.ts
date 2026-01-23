@@ -115,4 +115,9 @@ export const settingsScreenStyles = StyleSheet.create({
     justifyContent: 'space-between',
     flexWrap: 'wrap',
   },
+  chevronIcon: {
+    fontSize: typography.fontSize.xl,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textTertiary,
+  },
 });

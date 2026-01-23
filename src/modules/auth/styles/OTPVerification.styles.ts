@@ -35,6 +35,11 @@ export const otpVerificationStyles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing["3xl"],
   },
+  scrollContentWithKeyboard: {
+    flexGrow: 1,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing["5xl"] + spacing.base, // 100px equivalent
+  },
   title: {
     fontSize: typography.fontSize["2xl"],
     fontWeight: typography.fontWeight.bold,

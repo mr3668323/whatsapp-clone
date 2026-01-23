@@ -62,6 +62,10 @@ export const chatItemStyles = StyleSheet.create({
     fontFamily: typography.fontFamily.regular,
     color: colors.textTertiary,
   },
+  messageRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
   message: {
     fontSize: typography.fontSize.sm,
     fontFamily: typography.fontFamily.regular,

@@ -147,7 +147,7 @@ export const PhoneVerificationScreen: React.FC<PhoneVerificationScreenProps> = (
         />
 
         {/* Add spacer at bottom of ScrollView */}
-        <View style={{ height: 80 }} />
+        <View style={phoneVerificationStyles.scrollSpacer} />
       </ScrollView>
 
       {/* Fixed Button at Bottom - Outside ScrollView */}

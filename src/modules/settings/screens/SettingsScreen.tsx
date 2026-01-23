@@ -121,7 +121,7 @@ export const SettingsScreen: React.FC = () => {
                 Control your experience across WhatsApp, Facebook, Instagram and more.
               </Text>
             </View>
-            <Text style={{ fontSize: 20, color: '#8696A0' }}>›</Text>
+            <Text style={settingsScreenStyles.chevronIcon}>›</Text>
           </TouchableOpacity>
         </View>
 

@@ -81,7 +81,7 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navig
           <View style={chatDetailScreenStyles.cardBubble}>
             <View style={chatDetailScreenStyles.cardMedia}>
               <View style={chatDetailScreenStyles.cardPlayButton}>
-                <Text style={{ color: colors.textLight, fontSize: 18 }}>▶</Text>
+                <Text style={chatDetailScreenStyles.cardPlayButtonText}>▶</Text>
               </View>
             </View>
             <Text style={chatDetailScreenStyles.cardTitle}>{item.text}</Text>
