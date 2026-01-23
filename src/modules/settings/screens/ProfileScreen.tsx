@@ -12,6 +12,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../../types/navigation';
 import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '../../../styles/colors';
 import { spacing } from '../../../styles/spacing';
 import { typography } from '../../../styles/typography';
@@ -24,33 +25,93 @@ export const ProfileScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const user = auth().currentUser;
+    let unsubscribe: (() => void) | null = null;
 
-    if (!user) {
-      setLoading(false);
-      return;
-    }
+    const loadPhoneNumber = async () => {
+      try {
+        const user = auth().currentUser;
 
-    // Priority 1: Firebase Auth phone
-    if (user.phoneNumber) {
-      setPhoneNumber(user.phoneNumber);
-    }
-
-    // Priority 2: Firestore sync
-    const unsubscribe = firestore()
-      .collection('users')
-      .doc(user.uid)
-      .onSnapshot(doc => {
-        if (doc.exists) {
-          const data = doc.data();
-          if (data?.phoneNumber) {
-            setPhoneNumber(data.phoneNumber);
+        // Priority 1: Firebase Auth user (real Firebase Phone Auth)
+        if (user) {
+          console.log('[ProfileScreen] Firebase Auth user found, uid:', user.uid, 'phone:', user.phoneNumber);
+          
+          // Priority 1a: Firebase Auth phone number
+          if (user.phoneNumber) {
+            setPhoneNumber(user.phoneNumber);
+            setLoading(false);
           }
-        }
-        setLoading(false);
-      });
 
-    return () => unsubscribe();
+          // Priority 1b: Firestore sync for Firebase Auth user
+          unsubscribe = firestore()
+            .collection('users')
+            .doc(user.uid)
+            .onSnapshot(
+              doc => {
+                if (doc.exists) {
+                  const data = doc.data();
+                  if (data?.phoneNumber) {
+                    console.log('[ProfileScreen] Phone from Firestore:', data.phoneNumber);
+                    setPhoneNumber(data.phoneNumber);
+                  }
+                }
+                setLoading(false);
+              },
+              error => {
+                console.log('[ProfileScreen] Firestore snapshot error:', error?.message);
+                setLoading(false);
+              }
+            );
+
+          return;
+        }
+
+        // Priority 2: Manual auth (test OTP - Firestore-only)
+        const manualAuthPhone = await AsyncStorage.getItem('manualAuthPhoneNumber');
+        if (manualAuthPhone) {
+          console.log('[ProfileScreen] Manual auth detected, phone:', manualAuthPhone);
+          setPhoneNumber(manualAuthPhone);
+          
+          // Also try to get from Firestore (uid = phoneNumber for test OTP users)
+          unsubscribe = firestore()
+            .collection('users')
+            .doc(manualAuthPhone)
+            .onSnapshot(
+              doc => {
+                if (doc.exists) {
+                  const data = doc.data();
+                  if (data?.phoneNumber) {
+                    console.log('[ProfileScreen] Phone from Firestore (manual auth):', data.phoneNumber);
+                    setPhoneNumber(data.phoneNumber);
+                  }
+                }
+                setLoading(false);
+              },
+              error => {
+                console.log('[ProfileScreen] Firestore snapshot error (manual auth):', error?.message);
+                // If Firestore fails, still use the phone from AsyncStorage
+                setLoading(false);
+              }
+            );
+
+          return;
+        }
+
+        // No user found
+        console.log('[ProfileScreen] No user found (neither Firebase Auth nor manual auth)');
+        setLoading(false);
+      } catch (error: any) {
+        console.log('[ProfileScreen] Error loading phone number:', error?.message);
+        setLoading(false);
+      }
+    };
+
+    loadPhoneNumber();
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, []);
 
   const handleBackPress = () => {
@@ -58,12 +119,12 @@ export const ProfileScreen: React.FC = () => {
   };
 
   // Get display values
-  const displayName = phoneNumber ?? 'Unknown';
+  const displayName = 'My Number';
   const displayPhone = phoneNumber ?? 'No phone number';
   const displayAbout = 'Set About';
 
-  // Get first letter of phone number for avatar
-  const avatarLetter = phoneNumber ? phoneNumber.charAt(phoneNumber.length - 1).toUpperCase() : '?';
+  // Avatar shows "M" for "My Number"
+  const avatarLetter = 'M';
 
   const profileScreenStyles = {
     container: {

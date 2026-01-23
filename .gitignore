@@ -73,6 +73,56 @@ yarn-error.log
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+yarn.lock
+
+# Firebase & Environment
+google-services.json
+GoogleService-Info.plist
+*.env
+*.env.local
+*.env.*.local
+firebase.json
+.firebase/
+firebase-debug.log
+firestore-debug.log
+
+# Android specific
+android/.gradle/
+android/app/build/
+android/app/release/
+android/.idea/
+android/local.properties
+android/app/google-services.json
+
+# iOS specific
+ios/Pods/
+ios/build/
+ios/*.xcworkspace
+ios/*.xcuserdata
+ios/Podfile.lock
+ios/GoogleService-Info.plist
+
+# Build artifacts
+*.apk
+*.aab
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# TypeScript
+*.tsbuildinfo
+
+# Misc
+*.pem
+*.p12
+*.jks
 
 # Backend (not used - React Native Firebase only)
 backend/
