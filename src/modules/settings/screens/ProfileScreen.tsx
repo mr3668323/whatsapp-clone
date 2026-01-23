@@ -12,70 +12,106 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../../types/navigation';
 import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '../../../styles/colors';
 import { spacing } from '../../../styles/spacing';
 import { typography } from '../../../styles/typography';
 
 type ProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Profile'>;
 
-interface UserData {
-  phoneNumber?: string;
-  name?: string;
-  about?: string;
-}
-
 export const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<ProfileScreenNavigationProp>();
+  const [phoneNumber, setPhoneNumber] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [userData, setUserData] = useState<UserData | null>(null);
-  const [authUser, setAuthUser] = useState<FirebaseAuthTypes.User | null>(null);
 
   useEffect(() => {
-    const loadUserData = async () => {
+    let unsubscribe: (() => void) | null = null;
+
+    const loadPhoneNumber = async () => {
       try {
-        setLoading(true);
-        
-        // Get current user from Firebase Auth
-        const currentUser = auth().currentUser;
-        setAuthUser(currentUser);
+        const user = auth().currentUser;
 
-        if (currentUser?.uid) {
-          // Fetch user document from Firestore
-          const db = firestore();
-          const userDoc = await db.collection('users').doc(currentUser.uid).get();
+        // Priority 1: Firebase Auth user (real Firebase Phone Auth)
+        if (user) {
+          console.log('[ProfileScreen] Firebase Auth user found, uid:', user.uid, 'phone:', user.phoneNumber);
           
-          const exists =
-            typeof (userDoc as any).exists === 'function'
-              ? !!(userDoc as any).exists()
-              : !!(userDoc as any).exists;
-
-          if (exists) {
-            const data = userDoc.data() as UserData;
-            setUserData(data);
-            console.log('[ProfileScreen] ✅ User data loaded from Firestore');
-          } else {
-            console.log('[ProfileScreen] User document not found in Firestore, using Auth data');
-            // Use phone from auth if Firestore doc doesn't exist
-            setUserData({
-              phoneNumber: currentUser.phoneNumber || undefined,
-            });
+          // Priority 1a: Firebase Auth phone number
+          if (user.phoneNumber) {
+            setPhoneNumber(user.phoneNumber);
+            setLoading(false);
           }
+
+          // Priority 1b: Firestore sync for Firebase Auth user
+          unsubscribe = firestore()
+            .collection('users')
+            .doc(user.uid)
+            .onSnapshot(
+              doc => {
+                if (doc.exists) {
+                  const data = doc.data();
+                  if (data?.phoneNumber) {
+                    console.log('[ProfileScreen] Phone from Firestore:', data.phoneNumber);
+                    setPhoneNumber(data.phoneNumber);
+                  }
+                }
+                setLoading(false);
+              },
+              error => {
+                console.log('[ProfileScreen] Firestore snapshot error:', error?.message);
+                setLoading(false);
+              }
+            );
+
+          return;
         }
+
+        // Priority 2: Manual auth (test OTP - Firestore-only)
+        const manualAuthPhone = await AsyncStorage.getItem('manualAuthPhoneNumber');
+        if (manualAuthPhone) {
+          console.log('[ProfileScreen] Manual auth detected, phone:', manualAuthPhone);
+          setPhoneNumber(manualAuthPhone);
+          
+          // Also try to get from Firestore (uid = phoneNumber for test OTP users)
+          unsubscribe = firestore()
+            .collection('users')
+            .doc(manualAuthPhone)
+            .onSnapshot(
+              doc => {
+                if (doc.exists) {
+                  const data = doc.data();
+                  if (data?.phoneNumber) {
+                    console.log('[ProfileScreen] Phone from Firestore (manual auth):', data.phoneNumber);
+                    setPhoneNumber(data.phoneNumber);
+                  }
+                }
+                setLoading(false);
+              },
+              error => {
+                console.log('[ProfileScreen] Firestore snapshot error (manual auth):', error?.message);
+                // If Firestore fails, still use the phone from AsyncStorage
+                setLoading(false);
+              }
+            );
+
+          return;
+        }
+
+        // No user found
+        console.log('[ProfileScreen] No user found (neither Firebase Auth nor manual auth)');
+        setLoading(false);
       } catch (error: any) {
-        console.log('[ProfileScreen] Error loading user data:', error?.message);
-        // Fallback to auth user phone if error
-        const currentUser = auth().currentUser;
-        if (currentUser) {
-          setUserData({
-            phoneNumber: currentUser.phoneNumber || undefined,
-          });
-        }
-      } finally {
+        console.log('[ProfileScreen] Error loading phone number:', error?.message);
         setLoading(false);
       }
     };
 
-    loadUserData();
+    loadPhoneNumber();
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, []);
 
   const handleBackPress = () => {
@@ -83,12 +119,12 @@ export const ProfileScreen: React.FC = () => {
   };
 
   // Get display values
-  const displayName = userData?.name || userData?.phoneNumber || authUser?.phoneNumber || 'Unknown';
-  const displayPhone = userData?.phoneNumber || authUser?.phoneNumber || 'No phone number';
-  const displayAbout = userData?.about || 'Set About';
+  const displayName = 'My Number';
+  const displayPhone = phoneNumber ?? 'No phone number';
+  const displayAbout = 'Set About';
 
-  // Get first letter of name for avatar
-  const avatarLetter = displayName.charAt(0).toUpperCase();
+  // Avatar shows "M" for "My Number"
+  const avatarLetter = 'M';
 
   const profileScreenStyles = {
     container: {

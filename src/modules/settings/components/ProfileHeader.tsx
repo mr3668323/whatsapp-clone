@@ -15,12 +15,12 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ onPress }) => {
     >
       <View style={profileHeaderStyles.avatarContainer}>
         <View style={profileHeaderStyles.avatar}>
-          <Text style={profileHeaderStyles.avatarText}>R</Text>
+          <Text style={profileHeaderStyles.avatarText}>M</Text>
         </View>
       </View>
       
       <View style={profileHeaderStyles.infoContainer}>
-        <Text style={profileHeaderStyles.name}>Rafi</Text>
+        <Text style={profileHeaderStyles.name}>My Number</Text>
         <View style={profileHeaderStyles.subtitleContainer}>
           <Text style={profileHeaderStyles.subtitle}>What's happening?</Text>
         </View>
