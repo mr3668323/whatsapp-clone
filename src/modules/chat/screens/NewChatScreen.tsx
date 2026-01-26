@@ -33,9 +33,56 @@ interface DisplayContact extends WhatsAppContact {
 
 export const NewChatScreen: React.FC = () => {
   const navigation = useNavigation<NewChatNavigation>();
-  const currentUser = auth().currentUser;
-  const currentUserUid = currentUser?.uid ?? null;
+  const [currentUserUid, setCurrentUserUid] = useState<string | null>(null);
   const [currentUserPhone, setCurrentUserPhone] = useState<string | null>(null);
+
+  // Get current user UID (handles both Firebase Auth and manual auth)
+  useEffect(() => {
+    const getCurrentUserUid = async () => {
+      // Priority 1: Firebase Auth user
+      const firebaseUser = auth().currentUser;
+      if (firebaseUser?.uid) {
+        console.log('[NewChatScreen] Firebase Auth user found, uid:', firebaseUser.uid);
+        setCurrentUserUid(firebaseUser.uid);
+        return;
+      }
+
+      // Priority 2: Manual auth (test OTP - Firestore-only)
+      // For manual auth, the UID is the phone number stored in AsyncStorage
+      const manualAuthPhone = await AsyncStorage.getItem('manualAuthPhoneNumber');
+      if (manualAuthPhone) {
+        console.log('[NewChatScreen] Manual auth detected, using phone as uid:', manualAuthPhone);
+        setCurrentUserUid(manualAuthPhone);
+        return;
+      }
+
+      // No user found
+      console.log('[NewChatScreen] No user found (neither Firebase Auth nor manual auth)');
+      setCurrentUserUid(null);
+    };
+
+    getCurrentUserUid();
+
+    // Also listen to auth state changes
+    const unsubscribe = auth().onAuthStateChanged((firebaseUser) => {
+      if (firebaseUser?.uid) {
+        console.log('[NewChatScreen] Auth state changed, uid:', firebaseUser.uid);
+        setCurrentUserUid(firebaseUser.uid);
+      } else {
+        // Check manual auth when Firebase user is null
+        AsyncStorage.getItem('manualAuthPhoneNumber').then((manualAuthPhone) => {
+          if (manualAuthPhone) {
+            console.log('[NewChatScreen] Auth state changed to null, using manual auth uid:', manualAuthPhone);
+            setCurrentUserUid(manualAuthPhone);
+          } else {
+            setCurrentUserUid(null);
+          }
+        });
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   // Debug: Log current user state
   useEffect(() => {
@@ -49,27 +96,33 @@ export const NewChatScreen: React.FC = () => {
 
   // Load phone number (same logic as ProfileScreen) - with immediate Firestore fetch
   useEffect(() => {
+    if (!currentUserUid) {
+      setCurrentUserPhone(null);
+      return;
+    }
+
     let unsubscribe: (() => void) | null = null;
 
     const loadPhoneNumber = async () => {
       try {
-        const user = auth().currentUser;
+        // Check if this is a Firebase Auth user or manual auth
+        const firebaseUser = auth().currentUser;
+        const isFirebaseAuth = firebaseUser?.uid === currentUserUid;
 
-        // Priority 1: Firebase Auth user
-        if (user) {
-          console.log('[NewChatScreen] Loading phone for Firebase Auth user, uid:', user.uid);
+        if (isFirebaseAuth && firebaseUser) {
+          console.log('[NewChatScreen] Loading phone for Firebase Auth user, uid:', firebaseUser.uid);
           
           // Priority 1a: Firebase Auth phone number (immediate)
-          if (user.phoneNumber) {
-            console.log('[NewChatScreen] Phone from Firebase Auth:', user.phoneNumber);
-            setCurrentUserPhone(user.phoneNumber);
+          if (firebaseUser.phoneNumber) {
+            console.log('[NewChatScreen] Phone from Firebase Auth:', firebaseUser.phoneNumber);
+            setCurrentUserPhone(firebaseUser.phoneNumber);
           }
 
           // Priority 1b: Immediate Firestore fetch (don't wait for snapshot)
           try {
             const userDoc = await firestore()
               .collection('users')
-              .doc(user.uid)
+              .doc(firebaseUser.uid)
               .get();
             
             const exists = typeof (userDoc as any).exists === 'function' 
@@ -92,7 +145,7 @@ export const NewChatScreen: React.FC = () => {
           // Priority 1c: Firestore real-time sync (for updates)
           unsubscribe = firestore()
             .collection('users')
-            .doc(user.uid)
+            .doc(firebaseUser.uid)
             .onSnapshot(
               doc => {
                 const exists = typeof (doc as any).exists === 'function' 
@@ -115,57 +168,53 @@ export const NewChatScreen: React.FC = () => {
         }
 
         // Priority 2: Manual auth (test OTP - Firestore-only)
-        const manualAuthPhone = await AsyncStorage.getItem('manualAuthPhoneNumber');
-        if (manualAuthPhone) {
-          console.log('[NewChatScreen] Manual auth detected, phone:', manualAuthPhone);
-          setCurrentUserPhone(manualAuthPhone);
-          
-          // Also try to get from Firestore immediately
-          try {
-            const userDoc = await firestore()
-              .collection('users')
-              .doc(manualAuthPhone)
-              .get();
-            
-            const exists = typeof (userDoc as any).exists === 'function' 
-              ? !!(userDoc as any).exists() 
-              : !!(userDoc as any).exists;
-            
-            if (exists) {
-              const data = userDoc.data();
-              if (data?.phoneNumber) {
-                console.log('[NewChatScreen] Phone from Firestore (manual auth, immediate):', data.phoneNumber);
-                setCurrentUserPhone(data.phoneNumber);
-              }
-            }
-          } catch (firestoreError: any) {
-            console.log('[NewChatScreen] Error fetching from Firestore (manual auth):', firestoreError?.message);
-          }
-          
-          // Real-time sync for manual auth
-          unsubscribe = firestore()
+        // For manual auth, currentUserUid is the phone number
+        console.log('[NewChatScreen] Loading phone for manual auth user, uid (phone):', currentUserUid);
+        setCurrentUserPhone(currentUserUid); // Use UID as phone for manual auth
+        
+        // Also try to get from Firestore immediately
+        try {
+          const userDoc = await firestore()
             .collection('users')
-            .doc(manualAuthPhone)
-            .onSnapshot(
-              doc => {
-                const exists = typeof (doc as any).exists === 'function' 
-                  ? !!(doc as any).exists() 
-                  : !!(doc as any).exists;
-                if (exists) {
-                  const data = doc.data();
-                  if (data?.phoneNumber) {
-                    console.log('[NewChatScreen] Phone from Firestore (manual auth, realtime):', data.phoneNumber);
-                    setCurrentUserPhone(data.phoneNumber);
-                  }
-                }
-              },
-              error => {
-                console.log('[NewChatScreen] Firestore snapshot error (manual auth):', error?.message);
-              }
-            );
-        } else {
-          console.log('[NewChatScreen] No manual auth phone found in AsyncStorage');
+            .doc(currentUserUid)
+            .get();
+          
+          const exists = typeof (userDoc as any).exists === 'function' 
+            ? !!(userDoc as any).exists() 
+            : !!(userDoc as any).exists;
+          
+          if (exists) {
+            const data = userDoc.data();
+            if (data?.phoneNumber) {
+              console.log('[NewChatScreen] Phone from Firestore (manual auth, immediate):', data.phoneNumber);
+              setCurrentUserPhone(data.phoneNumber);
+            }
+          }
+        } catch (firestoreError: any) {
+          console.log('[NewChatScreen] Error fetching from Firestore (manual auth):', firestoreError?.message);
         }
+        
+        // Real-time sync for manual auth
+        unsubscribe = firestore()
+          .collection('users')
+          .doc(currentUserUid)
+          .onSnapshot(
+            doc => {
+              const exists = typeof (doc as any).exists === 'function' 
+                ? !!(doc as any).exists() 
+                : !!(doc as any).exists;
+              if (exists) {
+                const data = doc.data();
+                if (data?.phoneNumber) {
+                  console.log('[NewChatScreen] Phone from Firestore (manual auth, realtime):', data.phoneNumber);
+                  setCurrentUserPhone(data.phoneNumber);
+                }
+              }
+            },
+            error => {
+              console.log('[NewChatScreen] Firestore snapshot error (manual auth):', error?.message);
+            }
+          );
       } catch (error) {
         console.log('[NewChatScreen] Error loading phone number:', error);
       }
@@ -178,7 +227,7 @@ export const NewChatScreen: React.FC = () => {
         unsubscribe();
       }
     };
-  }, []);
+  }, [currentUserUid]);
 
   useEffect(() => {
     let isMounted = true;
@@ -213,13 +262,33 @@ export const NewChatScreen: React.FC = () => {
       }
 
       try {
+        console.log('[NewChatScreen] Opening chat - currentUserUid:', currentUserUid, 'target.uid:', target.uid);
         const chatRoomId = await getOrCreateChatRoom(currentUserUid, target.uid);
+        console.log('[NewChatScreen] Chat room created/found, chatRoomId:', chatRoomId);
+        console.log('[NewChatScreen] Navigating to ChatDetail with chatId:', chatRoomId, 'chatName:', target.name || target.phoneNumber);
+        
         navigation.navigate('ChatDetail', {
           chatId: chatRoomId,
           chatName: target.name || target.phoneNumber,
         });
-      } catch (error) {
-        Alert.alert('Error', 'Failed to open chat. Please try again.');
+      } catch (error: any) {
+        console.error('[NewChatScreen] Error opening chat:', error);
+        console.error('[NewChatScreen] Error details:', error?.message, error?.stack);
+        console.error('[NewChatScreen] Error code:', error?.code);
+        
+        // Provide helpful error message for permission errors
+        let errorMessage = error?.message || 'Unknown error';
+        if (error?.code === 'permission-denied' || errorMessage.includes('permission-denied')) {
+          errorMessage = 'Firestore permission denied.\n\n' +
+            'Please deploy Firestore rules:\n' +
+            '1. Open Firebase Console\n' +
+            '2. Go to Firestore Database → Rules\n' +
+            '3. Copy firestore.rules file contents\n' +
+            '4. Paste and click "Publish"\n' +
+            '5. Wait 10-20 seconds, then reload app';
+        }
+        
+        Alert.alert('Error', `Failed to open chat: ${errorMessage}. Please try again.`);
       }
     },
     [currentUserUid, navigation]
@@ -229,18 +298,49 @@ export const NewChatScreen: React.FC = () => {
     async () => {
       if (!search.trim()) return;
 
-      const normalized = normalizePhoneNumberForMatch(search.trim(), currentUserPhone);
+      // Try multiple normalization approaches to find the user
+      const searchInput = search.trim();
+      
+      // Try 1: Normalize with current user's phone context
+      let normalized = normalizePhoneNumberForMatch(searchInput, currentUserPhone);
+      
+      // Try 2: If normalization failed, try the raw input (might already be in E.164)
       if (!normalized) {
-        Alert.alert('Invalid number', 'Please enter a valid phone number.');
-        return;
+        // Check if it's already in E.164 format
+        if (searchInput.startsWith('+') && /^\+[1-9]\d{1,14}$/.test(searchInput)) {
+          normalized = searchInput;
+        } else {
+          Alert.alert('Invalid number', 'Please enter a valid phone number.');
+          return;
+        }
       }
 
-      const user = await getUserByPhoneNumber(normalized);
+      console.log('[NewChatScreen] Searching for user with normalized phone:', normalized);
+      
+      // Try to find user by phone number
+      let user = await getUserByPhoneNumber(normalized);
+      
+      // If not found, try without + prefix (some numbers might be stored without it)
+      if (!user && normalized.startsWith('+')) {
+        const withoutPlus = normalized.slice(1);
+        console.log('[NewChatScreen] Trying without + prefix:', withoutPlus);
+        user = await getUserByPhoneNumber(withoutPlus);
+      }
+      
+      // If still not found, try with + prefix if we tried without it
+      if (!user && !normalized.startsWith('+')) {
+        const withPlus = '+' + normalized;
+        console.log('[NewChatScreen] Trying with + prefix:', withPlus);
+        user = await getUserByPhoneNumber(withPlus);
+      }
+
       if (!user) {
+        console.log('[NewChatScreen] User not found after all attempts, normalized:', normalized);
         Alert.alert('Not on WhatsApp', 'This number is not registered on WhatsApp.');
         return;
       }
 
+      console.log('[NewChatScreen] User found, opening chat with uid:', user.uid);
       await handleOpenChat({
         uid: user.uid,
         name: user.phoneNumber,

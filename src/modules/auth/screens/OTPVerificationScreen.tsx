@@ -26,6 +26,7 @@ import { setPhoneAuthInProgress } from '../../../services/phoneAuthState';
 import { ErrorBoundary } from '../../../components/common/ErrorBoundary';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import firestore from '@react-native-firebase/firestore';
+import auth from '@react-native-firebase/auth';
 
 type OTPVerificationScreenProps = NativeStackScreenProps<RootStackParamList, 'OTPVerification'>;
 
@@ -128,13 +129,22 @@ export const OTPVerificationScreen: React.FC<OTPVerificationScreenProps> = ({ ro
             try {
                 if (!confirmation && !isRequestingOTP && !hasRequestedOTPRef.current && isMountedRef.current) {
                     console.log('[OTPVerification] Requesting OTP on mount...');
+                    console.log('[OTPVerification] Phone number:', phoneNumber);
                     otpRequestPromiseRef.current = requestOTPIfNeeded();
-                    await otpRequestPromiseRef.current;
+                    const confirmationResult = await otpRequestPromiseRef.current;
+                    if (confirmationResult) {
+                        console.log('[OTPVerification] ✅ OTP request successful, confirmation object received');
+                    } else {
+                        console.warn('[OTPVerification] ⚠️ OTP request completed but no confirmation object');
+                    }
+                } else if (confirmation) {
+                    console.log('[OTPVerification] Confirmation object already exists, skipping request');
                 }
             } catch (error: any) {
                 // Only log error if component is still mounted (to avoid errors after navigation)
                 if (isMountedRef.current) {
                     console.log('[OTPVerification] Failed to request OTP on mount (non-critical):', error?.message);
+                    console.log('[OTPVerification] Error details:', error);
                     // Don't set error state - user can still use resend button
                     setOtpRequestError(null);
                 }
@@ -157,6 +167,24 @@ export const OTPVerificationScreen: React.FC<OTPVerificationScreenProps> = ({ ro
             otpRequestPromiseRef.current = null;
         };
     }, []); // Only run once on mount
+
+    // Watch for Firebase Auth state changes and navigate when authenticated
+    useEffect(() => {
+        if (!otpVerified) return;
+
+        const unsubscribe = auth().onAuthStateChanged((firebaseUser) => {
+            if (firebaseUser && otpVerified) {
+                console.log('[OTPVerification] Firebase Auth user detected after verification, navigating...');
+                // Clear phone auth in progress
+                setPhoneAuthInProgress(false);
+                // AppNavigator will automatically show AppStack
+                // But we can also explicitly navigate if needed
+                // The navigation will happen automatically via AppNavigator
+            }
+        });
+
+        return () => unsubscribe();
+    }, [otpVerified]);
 
     // Timer countdown - SIMPLIFIED AND SAFE
     useEffect(() => {
@@ -505,9 +533,6 @@ export const OTPVerificationScreen: React.FC<OTPVerificationScreenProps> = ({ ro
                 return;
             }
             
-            // Check if this is test OTP (123456) - skip Firebase entirely
-            const isTestOTP = enteredOtp === '123456';
-            
             // Helper function to create user and chats
             const createUserAndChats = async (user: any, phone: string, country: string) => {
                 try {
@@ -521,83 +546,114 @@ export const OTPVerificationScreen: React.FC<OTPVerificationScreenProps> = ({ ro
                 }
             };
             
-            // Helper function to mark verification complete.
-            // Actual navigation to Home is handled by AppNavigator when it detects
-            // Firebase Auth user OR manual auth in AsyncStorage.
-            const navigateToHome = () => {
-                console.log('[OTPVerification] Marking OTP as verified (AppNavigator will switch stacks to AppStack/MainTabs)...');
-                isVerifyingRef.current = false;
-                if (isMountedRef.current) {
-                    setOtpVerified(true);
-                    setIsVerifying(false);
-                }
-            };
-            
-            // For test OTP (123456), COMPLETELY SKIP Firebase Phone Auth and use the
-            // existing Firestore-only flow. This guarantees:
-            // - No long waits
-            // - No native/network timeouts
-            // - No red error overlays from failed Firebase requests
-            // NOTE: This means test OTP logins will NOT create a Firebase Auth user.
-            if (isTestOTP) {
-                console.log('[OTPVerification] ✅ Test OTP (123456) detected - using Firestore-only auth (no Firebase calls)...');
-
-                // Firestore-only flow for test OTP – fast and stable
+            // UNIVERSAL TEST OTP: 123456 works for ANY phone number (development only)
+            // This bypasses Firebase Phone Auth verification and creates a Firebase Auth user via email/password
+            if (enteredOtp === '123456') {
+                console.log('[OTPVerification] ✅ Universal test OTP (123456) detected - creating Firebase Auth user');
+                
                 try {
-                    // 1) Check if user already exists by phone number
-                    console.log('[OTPVerification] Checking if user exists by phone number:', phoneNumber);
+                    const authInstance = auth();
+                    
+                    // Generate email from phone number (Firebase requires email for email/password auth)
+                    // Format: phone_923001234567@test.whatsapp.local
+                    const email = `phone_${phoneNumber.replace(/[^0-9]/g, '')}@test.whatsapp.local`;
+                    const password = 'test123456'; // Fixed password for test OTP
+                    
+                    console.log('[OTPVerification] Creating Firebase Auth user with email:', email);
+                    
+                    // Check if user already exists with this phone
                     const existingUser = await getUserByPhoneNumber(phoneNumber);
-
-                    if (existingUser) {
-                        // User exists → just update lastLogin and log them in
-                        console.log('[OTPVerification] ✅ Existing user found, uid:', existingUser.uid);
-
+                    
+                    let firebaseUser: FirebaseAuthTypes.User;
+                    
+                    try {
+                        // Try to create user first (will fail if user already exists)
                         try {
-                            const db = firestore();
-                            await db
-                                .collection('users')
-                                .doc(existingUser.uid)
-                                .update({
-                                    lastLogin: firestore.FieldValue.serverTimestamp(),
-                                });
-                            console.log('[OTPVerification] ✅ lastLogin updated for existing user');
-                        } catch (tsError: any) {
-                            console.warn(
-                                '[OTPVerification] ⚠️ Failed to update lastLogin (non-fatal):',
-                                tsError,
-                            );
+                            const createCredential = await authInstance.createUserWithEmailAndPassword(email, password);
+                            firebaseUser = createCredential.user;
+                            console.log('[OTPVerification] ✅ Created new Firebase Auth user');
+                        } catch (createError: any) {
+                            // If user already exists, sign in instead
+                            if (createError?.code === 'auth/email-already-in-use') {
+                                console.log('[OTPVerification] User already exists, signing in...');
+                                const signInCredential = await authInstance.signInWithEmailAndPassword(email, password);
+                                firebaseUser = signInCredential.user;
+                                console.log('[OTPVerification] ✅ Signed in with existing email/password account');
+                            } else {
+                                throw createError;
+                            }
                         }
-
-                        // Persist manual auth session
-                        await AsyncStorage.setItem('manualAuthPhoneNumber', phoneNumber);
-                        await AsyncStorage.setItem('isManualAuth', 'true');
-
-                        console.log('[OTPVerification] ✅ Existing user logged in (Firestore-only), marking verified...');
-                        navigateToHome();
-                        return;
+                    } catch (authError: any) {
+                        console.error('[OTPVerification] ❌ Firebase Auth error:', authError?.code, authError?.message);
+                        throw authError;
                     }
-
-                    // 2) User does NOT exist → create new user using phone number as uid
-                    const mockUser = {
-                        uid: phoneNumber,
-                        phoneNumber: phoneNumber,
-                    };
-
-                    console.log('[OTPVerification] Creating NEW user with uid (phone number):', phoneNumber);
-                    await createUserAndChats(mockUser as any, phoneNumber, countryCode);
-
-                    // Persist manual auth session
-                    await AsyncStorage.setItem('manualAuthPhoneNumber', phoneNumber);
-                    await AsyncStorage.setItem('isManualAuth', 'true');
-
-                    console.log('[OTPVerification] ✅ New Firestore-only user created, marking verified...');
-                    navigateToHome();
+                    
+                    // Update user profile with phone number
+                    try {
+                        await firebaseUser.updateProfile({
+                            displayName: existingUser?.displayName || phoneNumber,
+                        });
+                        console.log('[OTPVerification] ✅ Updated user profile');
+                    } catch (profileError: any) {
+                        console.warn('[OTPVerification] ⚠️ Failed to update profile (non-critical):', profileError?.message);
+                    }
+                    
+                    // Create/update user in Firestore
+                    if (existingUser) {
+                        // Update existing user
+                        await firestore()
+                            .collection('users')
+                            .doc(existingUser.uid)
+                            .set({
+                                phoneNumber: phoneNumber,
+                                displayName: existingUser.displayName || phoneNumber,
+                                uid: firebaseUser.uid,
+                                email: email,
+                                lastLogin: firestore.FieldValue.serverTimestamp(),
+                            }, { merge: true });
+                        console.log('[OTPVerification] ✅ Updated existing user in Firestore');
+                    } else {
+                        // Create new user
+                        await createUserAndChats(
+                            {
+                                uid: firebaseUser.uid,
+                                phoneNumber: phoneNumber,
+                                email: email,
+                            },
+                            phoneNumber,
+                            countryCode
+                        );
+                        console.log('[OTPVerification] ✅ Created new user in Firestore');
+                    }
+                    
+                    // Clear phone auth in progress
+                    setPhoneAuthInProgress(false);
+                    
+                    // Mark as verified
+                    isVerifyingRef.current = false;
+                    if (isMountedRef.current) {
+                        setOtpVerified(true);
+                        setIsVerifying(false);
+                    }
+                    
+                    console.log('[OTPVerification] ✅ Test OTP verification complete - Firebase Auth user created');
+                    console.log('[OTPVerification] User UID:', firebaseUser.uid);
+                    console.log('[OTPVerification] User email:', email);
+                    console.log('[OTPVerification] AppNavigator will detect Firebase Auth user and navigate');
+                    
                     return;
-                } catch (fallbackError: any) {
-                    console.log('[OTPVerification] ❌ Firestore-only test OTP flow error:', fallbackError);
-                    throw new Error(
-                        'Failed to create or fetch user from Firestore. Please check your internet connection.',
-                    );
+                } catch (testOtpError: any) {
+                    console.error('[OTPVerification] ❌ Test OTP flow error:', testOtpError);
+                    isVerifyingRef.current = false;
+                    if (isMountedRef.current) {
+                        setIsVerifying(false);
+                        Alert.alert(
+                            'Test OTP Error',
+                            `Failed to authenticate with test OTP: ${testOtpError?.message || 'Unknown error'}. Please ensure Email/Password authentication is enabled in Firebase Console.`,
+                            [{ text: 'OK' }]
+                        );
+                    }
+                    return;
                 }
             }
             
@@ -641,8 +697,17 @@ export const OTPVerificationScreen: React.FC<OTPVerificationScreenProps> = ({ ro
             // Verify OTP with Firebase
             if (effectiveConfirmation) {
                 console.log('[OTPVerification] Verifying OTP via Firebase...');
+                console.log('[OTPVerification] Phone number:', phoneNumber);
+                console.log('[OTPVerification] OTP code:', enteredOtp);
+                console.log('[OTPVerification] Confirmation object exists:', !!effectiveConfirmation);
                 try {
                     const result = await verifyOTP(effectiveConfirmation, enteredOtp);
+                    console.log('[OTPVerification] verifyOTP result:', {
+                        success: result?.success,
+                        hasUser: !!result?.user,
+                        error: result?.error,
+                        errorCode: (result as any)?.errorCode
+                    });
 
                     if (!result || !result.success || !result.user) {
                         // Invalid OTP - ALWAYS show "Invalid OTP" message for verification failures
@@ -663,9 +728,15 @@ export const OTPVerificationScreen: React.FC<OTPVerificationScreenProps> = ({ ro
                                 );
                             } else {
                                 // For invalid code or any other verification failure, show "Invalid OTP"
+                                // If using test OTP, remind user to configure test phone in Firebase Console
+                                const isTestOTP = enteredOtp === '123456';
+                                const message = isTestOTP
+                                    ? 'The OTP you entered is incorrect. If using test OTP (123456), make sure the phone number is configured as a test number in Firebase Console (Authentication > Sign-in method > Phone > Phone numbers for testing).'
+                                    : 'The OTP you entered is incorrect. Please try again with the correct OTP.';
+                                
                                 Alert.alert(
                                     'Invalid OTP',
-                                    'The OTP you entered is incorrect. Please try again with the correct OTP.',
+                                    message,
                                     [{ text: 'OK' }]
                                 );
                             }
@@ -680,8 +751,27 @@ export const OTPVerificationScreen: React.FC<OTPVerificationScreenProps> = ({ ro
                     // Create/update user in Firestore (checks if exists)
                     await createUserAndChats(authenticatedUser, phoneNumber, countryCode);
                     
-                    // Navigate to Home IMMEDIATELY
-                    navigateToHome();
+                    // CRITICAL: Clear phone auth in progress flag FIRST
+                    // This allows AppNavigator to immediately show AppStack
+                    setPhoneAuthInProgress(false);
+                    console.log('[OTPVerification] ✅ Phone auth in progress flag cleared');
+                    
+                    // Mark as verified
+                    isVerifyingRef.current = false;
+                    if (isMountedRef.current) {
+                        setOtpVerified(true);
+                        setIsVerifying(false);
+                    }
+                    
+                    // Verify that Firebase Auth user is actually set
+                    const currentUser = auth().currentUser;
+                    if (currentUser) {
+                        console.log('[OTPVerification] ✅ Firebase Auth user confirmed:', currentUser.uid);
+                        console.log('[OTPVerification] ✅ AppNavigator should detect user and navigate to AppStack');
+                    } else {
+                        console.warn('[OTPVerification] ⚠️ Firebase Auth user not found immediately after verification');
+                    }
+                    
                     return;
                 } catch (verifyError: any) {
                     // Handle verification errors specifically (use console.log to avoid red screen)

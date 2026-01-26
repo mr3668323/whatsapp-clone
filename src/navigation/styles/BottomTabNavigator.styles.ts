@@ -17,6 +17,12 @@ export const bottomTabNavigatorStyles = StyleSheet.create({
     marginTop: spacing.xs,
     width: '100%',
   },
+  tabLabelFocused: {
+    fontWeight: typography.fontWeight.semibold,
+  },
+  tabLabelUnfocused: {
+    fontWeight: typography.fontWeight.normal,
+  },
   tabBarStyle: {
     backgroundColor: colors.background,
     borderTopColor: colors.border,

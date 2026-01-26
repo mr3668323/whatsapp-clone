@@ -127,12 +127,28 @@ export const homeScreenStyles = StyleSheet.create({
   messagePreview: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing.xs,
   },
   messageText: {
     fontSize: typography.fontSize.sm,
     fontFamily: typography.fontFamily.regular,
     color: colors.textSecondary,
     flex: 1,
+  },
+  tickSent: {
+    fontSize: typography.fontSize.xs,
+    color: colors.textTertiary,
+    fontFamily: typography.fontFamily.regular,
+  },
+  tickDelivered: {
+    fontSize: typography.fontSize.xs,
+    color: colors.textTertiary,
+    fontFamily: typography.fontFamily.regular,
+  },
+  tickSeen: {
+    fontSize: typography.fontSize.xs,
+    color: colors.whatsappBlue,
+    fontFamily: typography.fontFamily.regular,
   },
   unreadBadge: {
     minWidth: spacing.xl,
@@ -171,6 +187,23 @@ export const homeScreenStyles = StyleSheet.create({
     position: 'absolute',
     bottom: spacing.lg + spacing.sm,
     right: spacing.lg,
+    alignItems: 'flex-end',
+    gap: spacing.md,
+  },
+  metaAIFab: {
+    width: spacing.avatarSize,
+    height: spacing.avatarSize,
+    borderRadius: spacing.avatarSize / 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: colors.shadow,
+    shadowOffset: {
+      width: 0,
+      height: spacing.xs,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: spacing.sm,
+    elevation: 4,
   },
   chatFab: {
     width: spacing.avatarSize,

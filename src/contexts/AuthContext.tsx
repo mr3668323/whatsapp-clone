@@ -50,37 +50,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     console.log('[AuthContext] Setting up Firebase auth state listener...');
 
-    // Check for manual auth (test OTP fallback)
-    const checkManualAuth = async () => {
-      try {
-        const isManual = await AsyncStorage.getItem('isManualAuth');
-        if (isManual === 'true') {
-          console.log('[AuthContext] Manual auth detected');
-          setManualAuth(true);
-        } else {
-          setManualAuth(false);
-        }
-      } catch (e) {
-        console.log('[AuthContext] Failed to read manual auth state:', e);
-        setManualAuth(false);
-      }
-    };
-
-    // Initial manual auth check
-    checkManualAuth();
-
-    // Set up interval to check manual auth changes
-    const manualAuthInterval = setInterval(() => {
-      checkManualAuth();
-    }, 500);
-
     // Set up Firebase Auth state listener
-    // This is the PRIMARY authentication method using Firebase Phone Auth
+    // This is the ONLY authentication method using Firebase Phone Auth
     const unsubscribe = auth().onAuthStateChanged((firebaseUser) => {
       console.log('[AuthContext] Firebase auth state changed:', 
         firebaseUser ? `uid=${firebaseUser.uid}, phone=${firebaseUser.phoneNumber}` : 'no user');
       
       setUser(firebaseUser);
+      setManualAuth(false); // Always false - only Firebase Auth
       setLoading(false);
       setInitializing(false);
     });
@@ -89,7 +66,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => {
       console.log('[AuthContext] Cleaning up auth state listener');
       unsubscribe();
-      clearInterval(manualAuthInterval);
     };
   }, []);
 

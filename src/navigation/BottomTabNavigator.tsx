@@ -30,9 +30,9 @@ const TabIcon: React.FC<TabIconProps> = ({ name, focused }) => {
             <Text
                 style={[
                     bottomTabNavigatorStyles.tabLabel,
+                    focused ? bottomTabNavigatorStyles.tabLabelFocused : bottomTabNavigatorStyles.tabLabelUnfocused,
                     {
                         color: focused ? colors.buttonPrimary : colors.textTertiary,
-                        fontWeight: focused ? typography.fontWeight.semibold : typography.fontWeight.normal,
                     },
                 ]}
             >

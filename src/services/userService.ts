@@ -19,9 +19,11 @@ export interface UserData {
  * Create or update user in Firestore, using Firebase Auth uid as document ID.
  * - If user doc does not exist: create users/{uid} and set createdAt + lastLogin.
  * - If user doc exists: update lastLogin (and phone fields), preserve existing chats.
+ * 
+ * Supports both Firebase Auth users and manual auth users (where user.uid is phone number).
  */
 export const createOrUpdateUser = async (
-  user: FirebaseAuthTypes.User,
+  user: FirebaseAuthTypes.User | { uid: string; phoneNumber?: string },
   phoneNumber: string,
   countryCode?: string
 ): Promise<UserData> => {
@@ -119,10 +121,13 @@ export const getUserData = async (uid: string): Promise<UserData | null> => {
 
 /**
  * Check if user exists by phone number and return user data
+ * Also checks if phone number is used as UID (for manual auth users)
  */
 export const getUserByPhoneNumber = async (phoneNumber: string): Promise<UserData | null> => {
   try {
     const db = firestore();
+    
+    // First, try to find by phoneNumber field
     const querySnapshot = await db
       .collection('users')
       .where('phoneNumber', '==', phoneNumber)
@@ -132,8 +137,27 @@ export const getUserByPhoneNumber = async (phoneNumber: string): Promise<UserDat
     if (!querySnapshot.empty) {
       const doc = querySnapshot.docs[0];
       const data = { uid: doc.id, ...doc.data() } as UserData;
-      console.log('[userService] ✅ User found by phone number:', phoneNumber, 'uid:', doc.id);
+      console.log('[userService] ✅ User found by phone number field:', phoneNumber, 'uid:', doc.id);
       return data;
+    }
+    
+    // Second, check if phone number is used as document ID (for manual auth users)
+    // This handles cases where uid = phoneNumber
+    try {
+      const docRef = db.collection('users').doc(phoneNumber);
+      const docSnap = await docRef.get();
+      
+      const exists = typeof (docSnap as any).exists === 'function'
+        ? !!(docSnap as any).exists()
+        : !!(docSnap as any).exists;
+      
+      if (exists) {
+        const data = { uid: docSnap.id, ...docSnap.data() } as UserData;
+        console.log('[userService] ✅ User found by phone number as UID:', phoneNumber);
+        return data;
+      }
+    } catch (docError: any) {
+      console.log('[userService] Error checking phone as UID (non-fatal):', docError?.message);
     }
     
     console.log('[userService] User not found by phone number:', phoneNumber);
@@ -141,6 +165,7 @@ export const getUserByPhoneNumber = async (phoneNumber: string): Promise<UserDat
   } catch (error: any) {
     // Use console.log instead of console.error to avoid red-screen error overlay
     console.log('[userService] Error getting user by phone number (non-fatal):', error?.message || error);
+    console.log('[userService] Error code:', error?.code);
     return null;
   }
 };

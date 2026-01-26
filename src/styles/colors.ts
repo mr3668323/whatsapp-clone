@@ -76,6 +76,9 @@ export const colors = {
   profileBackground: "#F0F2F5", 
   profileDivider: "#E9EDEF", 
   
+  // Date Separator (WhatsApp style)
+  dateSeparatorBackground: "rgba(0, 0, 0, 0.08)", // Light background for date chip
+  
   // Shadows
   shadow: "rgba(0, 0, 0, 0.1)", 
   shadowLight: "rgba(0, 0, 0, 0.05)",

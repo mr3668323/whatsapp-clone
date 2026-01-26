@@ -13,48 +13,23 @@ const AppNavigator: React.FC = () => {
   const [manualAuth, setManualAuth] = useState<boolean>(false);
 
   useEffect(() => {
-    console.log('[AppNavigator] Setting up Firebase auth state listener & manual auth watcher...');
+    console.log('[AppNavigator] Setting up Firebase auth state listener...');
     
     // Keep native splash screen visible during initialization
     // It will be hidden after auth state is resolved
-
-    // Initial manual auth check (fallback when Firebase fails)
-    const checkManualAuthOnce = async () => {
-      try {
-        const isManual = await AsyncStorage.getItem('isManualAuth');
-        if (isManual === 'true') {
-          console.log('[AppNavigator] Manual auth detected on mount - allowing access');
-          setManualAuth(true);
-          setInitializing(false);
-        }
-      } catch (e) {
-        console.warn('[AppNavigator] Failed to read manual auth state:', e);
-      }
-    };
-    checkManualAuthOnce();
-
-    // Lightweight interval to detect manual auth changes while app is running
-    const intervalId = setInterval(async () => {
-      try {
-        const isManual = await AsyncStorage.getItem('isManualAuth');
-        const enabled = isManual === 'true';
-        setManualAuth(prev => (prev !== enabled ? enabled : prev));
-      } catch (e) {
-        // Non-fatal – just log once in a while if needed
-      }
-    }, 500);
     
+    // Set up Firebase Auth state listener - ONLY authentication method
     const unsubscribe = auth().onAuthStateChanged((firebaseUser) => {
       console.log('[AppNavigator] onAuthStateChanged →',
         firebaseUser ? `uid=${firebaseUser.uid}, phone=${firebaseUser.phoneNumber}` : 'no user');
       setUser(firebaseUser);
+      setManualAuth(false); // Always false - only Firebase Auth
       setInitializing(false);
     });
 
     return () => {
       console.log('[AppNavigator] Cleaning up auth state listener');
       unsubscribe();
-      clearInterval(intervalId);
     };
   }, []);
 
@@ -95,12 +70,6 @@ const AppNavigator: React.FC = () => {
   // If Firebase has an authenticated user and no phone-auth flow is active, show AppStack
   if (user) {
     console.log('[AppNavigator] Authenticated user found - showing AppStack. uid:', user.uid);
-    return <AppStack />;
-  }
-
-  // If manual auth is enabled (Firebase fallback), show AppStack
-  if (manualAuth) {
-    console.log('[AppNavigator] Manual auth enabled - showing AppStack (Firebase fallback mode)');
     return <AppStack />;
   }
 

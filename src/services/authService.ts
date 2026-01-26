@@ -363,12 +363,15 @@ export const verifyOTP = async (
       const errorCode = nativeError?.code || 'unknown';
       const errorMessage = nativeError?.message || 'OTP verification failed';
       
-      console.log('[authService] ❌ Native Firebase verification error:', errorCode, errorMessage);
+      console.log('[authService] ❌ Native Firebase verification error:');
+      console.log('[authService] Error code:', errorCode);
+      console.log('[authService] Error message:', errorMessage);
+      console.log('[authService] Full error:', JSON.stringify(nativeError, null, 2));
       
       // Provide user-friendly error messages
       let userMessage = errorMessage;
       if (errorCode === 'auth/invalid-verification-code') {
-        userMessage = 'Invalid OTP. The code you entered is incorrect.';
+        userMessage = 'Invalid OTP. The code you entered is incorrect. For test phone numbers, ensure the phone number and code match exactly what is configured in Firebase Console.';
       } else if (errorCode === 'auth/code-expired') {
         userMessage = 'Verification code has expired. Please request a new code.';
       } else if (errorCode === 'auth/session-expired') {
@@ -376,7 +379,7 @@ export const verifyOTP = async (
       } else if (errorMessage.toLowerCase().includes('invalid') || 
                  errorMessage.toLowerCase().includes('incorrect')) {
         // Catch any other invalid code errors
-        userMessage = 'Invalid OTP. The code you entered is incorrect.';
+        userMessage = 'Invalid OTP. The code you entered is incorrect. For test phone numbers, ensure the phone number and code match exactly what is configured in Firebase Console.';
       }
       
       // Ensure error code is preserved in the return value
