@@ -85,6 +85,7 @@ firebase.json
 .firebase/
 firebase-debug.log
 firestore-debug.log
+*-firebase-adminsdk-*.json
 
 # Android specific
 android/.gradle/

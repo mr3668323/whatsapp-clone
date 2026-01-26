@@ -32,6 +32,9 @@ service cloud.firestore {
       // Allow update
       allow update: if true;
       
+      // Allow delete (for delete chat functionality)
+      allow delete: if true;
+      
       // Messages subcollection
       match /messages/{messageId} {
         // Allow read for everyone
@@ -42,6 +45,9 @@ service cloud.firestore {
         
         // Allow update (for read receipts)
         allow update: if true;
+        
+        // Allow delete (for delete chat functionality)
+        allow delete: if true;
       }
     }
   }

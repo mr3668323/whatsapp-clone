@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
     View,
     Text,
@@ -24,6 +24,7 @@ import { formatMessageTime, formatDateSeparator, timestampToDate, isSameDay } fr
 import { MetaAIAvatar } from '../../../components/chat/MetaAIAvatar';
 import { MetaAIFirstTimeScreen } from '../../../components/chat/MetaAIFirstTimeScreen';
 import { ChatMenu } from '../../../components/chat/ChatMenu';
+import { sendMessageToMetaAI } from '../../../services/metaAIService';
 
 type RouteParams = {
     chatId: string;
@@ -34,7 +35,9 @@ export const ChatScreen = () => {
     const route = useRoute<any>();
     const navigation = useNavigation();
     const { chatId, chatName } = route.params as RouteParams;
-    const isMetaAIChat = chatId === 'meta_ai_chat';
+    // Treat both the initial frontend chatId ('meta_ai_chat') and the
+    // backend Firestore chatId pattern ('meta_ai_chat_<userId>') as Meta AI chats
+    const isMetaAIChat = chatId === 'meta_ai_chat' || chatId.startsWith('meta_ai_chat_');
 
     // Get current user UID (handles both Firebase Auth and manual auth)
     const [currentUserUid, setCurrentUserUid] = useState<string | null>(null);
@@ -140,6 +143,7 @@ export const ChatScreen = () => {
 
     const [messages, setMessages] = useState<any[]>([]);
     const [text, setText] = useState('');
+    const prevTextRef = useRef('');
     // Store participants for tick logic
     const [participants, setParticipants] = useState<string[]>([]);
     // User name for Meta AI greeting
@@ -179,36 +183,110 @@ export const ChatScreen = () => {
     useEffect(() => {
         if (!chatId) return;
 
-        // For Meta AI chat, use local state only (no Firestore)
-        if (isMetaAIChat) {
-            // Meta AI messages are stored in local state only
-            // Load from AsyncStorage if exists, otherwise start empty
-            const loadMetaAIMessages = async () => {
-                try {
-                    const stored = await AsyncStorage.getItem(`meta_ai_messages_${currentUserUid}`);
-                    if (stored) {
-                        const parsed = JSON.parse(stored);
-                        // Convert timestamp strings back to Firestore Timestamp objects
-                        const messagesWithTimestamps = parsed.map((msg: any) => {
-                            if (msg.createdAt && typeof msg.createdAt === 'object' && msg.createdAt.seconds) {
-                                msg.createdAt = firestore.Timestamp.fromMillis(msg.createdAt.seconds * 1000 + (msg.createdAt.nanoseconds || 0) / 1000000);
-                            } else if (msg.createdAt && typeof msg.createdAt === 'string') {
-                                // Handle ISO string format
-                                msg.createdAt = firestore.Timestamp.fromDate(new Date(msg.createdAt));
-                            }
-                            return msg;
-                        });
-                        setMessages(messagesWithTimestamps);
-                    }
-                } catch (error) {
-                    console.log('[ChatScreen] Error loading Meta AI messages:', error);
-                }
-            };
+        // For Meta AI chat, load from Firestore (backend stores messages there)
+        if (isMetaAIChat && currentUserUid) {
+            const metaAIChatRoomId = `meta_ai_chat_${currentUserUid}`;
+            console.log('[ChatScreen] Setting up Meta AI messages listener for:', metaAIChatRoomId);
             
-            if (currentUserUid) {
-                loadMetaAIMessages();
-            }
-            return;
+            // Try Firestore first (backend stores messages there)
+            const unsubscribe = firestore()
+                .collection('chatRooms')
+                .doc(metaAIChatRoomId)
+                .collection('messages')
+                .orderBy('createdAt', 'asc')
+                .onSnapshot(
+                    snapshot => {
+                        if (snapshot.docs.length > 0) {
+                            const msgs = snapshot.docs.map(doc => ({
+                                id: doc.id,
+                                ...doc.data(),
+                            }));
+                            
+                            // Deduplicate messages by text, senderId, and timestamp
+                            // This prevents duplicate AI responses
+                            const uniqueMsgs = msgs.reduce((acc: any[], msg: any) => {
+                                // Check if we already have a message with the same text, senderId, and similar timestamp
+                                const isDuplicate = acc.some((existing: any) => {
+                                    const sameText = existing.text === msg.text;
+                                    const sameSender = existing.senderId === msg.senderId;
+                                    // Consider messages within 2 seconds as potential duplicates
+                                    const timeDiff = Math.abs(
+                                        (existing.createdAt?.toMillis?.() || 0) - 
+                                        (msg.createdAt?.toMillis?.() || 0)
+                                    );
+                                    const sameTime = timeDiff < 2000;
+                                    return sameText && sameSender && sameTime;
+                                });
+                                
+                                if (!isDuplicate) {
+                                    acc.push(msg);
+                                }
+                                
+                                return acc;
+                            }, []);
+                            
+                            // Filter out temporary messages (those with temp_ prefix) when we have real Firestore messages
+                            const finalMsgs = uniqueMsgs.filter((msg: any) => !msg.id?.startsWith('temp_'));
+                            
+                            console.log('[ChatScreen] Meta AI messages loaded from Firestore:', finalMsgs.length, '(deduplicated from', msgs.length, ')');
+                            setMessages(finalMsgs);
+                            
+                            // Also save to AsyncStorage as backup
+                            const serializable = msgs.map((msg: any) => ({
+                                ...msg,
+                                createdAt: msg.createdAt?.toDate ? msg.createdAt.toDate().toISOString() : msg.createdAt,
+                            }));
+                            AsyncStorage.setItem(`meta_ai_messages_${currentUserUid}`, JSON.stringify(serializable)).catch(
+                                (error) => console.log('[ChatScreen] Error saving Meta AI messages to AsyncStorage:', error)
+                            );
+                        } else {
+                            // Fallback to AsyncStorage if Firestore is empty
+                            const loadFromAsyncStorage = async () => {
+                                try {
+                                    const stored = await AsyncStorage.getItem(`meta_ai_messages_${currentUserUid}`);
+                                    if (stored) {
+                                        const parsed = JSON.parse(stored);
+                                        const messagesWithTimestamps = parsed.map((msg: any) => {
+                                            if (msg.createdAt && typeof msg.createdAt === 'string') {
+                                                msg.createdAt = firestore.Timestamp.fromDate(new Date(msg.createdAt));
+                                            }
+                                            return msg;
+                                        });
+                                        console.log('[ChatScreen] Meta AI messages loaded from AsyncStorage:', messagesWithTimestamps.length);
+                                        setMessages(messagesWithTimestamps);
+                                    }
+                                } catch (error) {
+                                    console.log('[ChatScreen] Error loading Meta AI messages from AsyncStorage:', error);
+                                }
+                            };
+                            loadFromAsyncStorage();
+                        }
+                    },
+                    error => {
+                        console.error('[ChatScreen] Error loading Meta AI messages from Firestore:', error);
+                        // Fallback to AsyncStorage on error
+                        const loadFromAsyncStorage = async () => {
+                            try {
+                                const stored = await AsyncStorage.getItem(`meta_ai_messages_${currentUserUid}`);
+                                if (stored) {
+                                    const parsed = JSON.parse(stored);
+                                    const messagesWithTimestamps = parsed.map((msg: any) => {
+                                        if (msg.createdAt && typeof msg.createdAt === 'string') {
+                                            msg.createdAt = firestore.Timestamp.fromDate(new Date(msg.createdAt));
+                                        }
+                                        return msg;
+                                    });
+                                    setMessages(messagesWithTimestamps);
+                                }
+                            } catch (err) {
+                                console.log('[ChatScreen] Error loading from AsyncStorage fallback:', err);
+                            }
+                        };
+                        loadFromAsyncStorage();
+                    }
+                );
+            
+            return () => unsubscribe();
         }
 
         console.log('[ChatScreen] Setting up messages listener for chatId:', chatId);
@@ -385,11 +463,13 @@ export const ChatScreen = () => {
 
         const messageText: string = text;
         setText('');
+        prevTextRef.current = '';
 
-        // Handle Meta AI chat (frontend only, no Firestore)
+        // Handle Meta AI chat - call backend API
         if (isMetaAIChat) {
-            const userMessage = {
-                id: `msg_${Date.now()}_user`,
+            // Optimistically add user message to UI immediately
+            const tempUserMessage = {
+                id: `temp_${Date.now()}_user`,
                 text: messageText,
                 senderId: currentUserUid,
                 createdAt: firestore.Timestamp.now(),
@@ -397,54 +477,32 @@ export const ChatScreen = () => {
                 delivered: true,
                 seenBy: [currentUserUid],
             };
+            setMessages([...messages, tempUserMessage]);
 
-            // Add user message
-            const updatedMessages = [...messages, userMessage];
-            setMessages(updatedMessages);
-
-            // Save to AsyncStorage (convert Firestore Timestamps to serializable format)
+            // Call backend API - backend will save both user message and AI response to Firestore
             try {
-                const serializable = updatedMessages.map(msg => ({
-                    ...msg,
-                    createdAt: msg.createdAt?.toDate ? msg.createdAt.toDate().toISOString() : msg.createdAt,
-                }));
-                await AsyncStorage.setItem(`meta_ai_messages_${currentUserUid}`, JSON.stringify(serializable));
-            } catch (error) {
-                console.log('[ChatScreen] Error saving Meta AI messages:', error);
-            }
-
-            // Generate fake AI reply after 1 second
-            setTimeout(() => {
-                const aiReplies = [
-                    "I understand you're asking about that. Let me help you with that information.",
-                    "That's an interesting question! Here's what I can tell you about that topic.",
-                    "I'd be happy to help with that. Based on what you've shared, here's my response.",
-                    "Thanks for asking! Let me provide you with some helpful information on that.",
-                ];
-                const randomReply = aiReplies[Math.floor(Math.random() * aiReplies.length)];
-
-                const aiMessage = {
-                    id: `msg_${Date.now()}_ai`,
-                    text: randomReply,
-                    senderId: 'meta_ai',
-                    createdAt: firestore.Timestamp.now(),
-                    seen: false,
-                    delivered: true,
-                    seenBy: [],
-                };
-
-                const finalMessages = [...updatedMessages, aiMessage];
-                setMessages(finalMessages);
-
-                // Save to AsyncStorage (convert Firestore Timestamps to serializable format)
-                const serializable = finalMessages.map(msg => ({
-                    ...msg,
-                    createdAt: msg.createdAt?.toDate ? msg.createdAt.toDate().toISOString() : msg.createdAt,
-                }));
-                AsyncStorage.setItem(`meta_ai_messages_${currentUserUid}`, JSON.stringify(serializable)).catch(
-                    (error) => console.log('[ChatScreen] Error saving Meta AI messages:', error)
+                console.log('[ChatScreen] Calling Meta AI backend API...');
+                await sendMessageToMetaAI(currentUserUid, messageText);
+                console.log('[ChatScreen] ✅ Message sent to backend, waiting for Firestore update...');
+                
+                // Firestore listener will automatically update with both user message and AI response
+                // No need to add optimistic AI message - it will come from Firestore
+                
+            } catch (error: any) {
+                console.error('[ChatScreen] ❌ Error getting AI response:', error);
+                
+                // Remove the optimistic user message on error
+                setMessages(prev => prev.filter(msg => msg.id !== tempUserMessage.id));
+                
+                // Show error to user
+                Alert.alert(
+                    'Error',
+                    error.message?.includes('Failed to fetch') || error.message?.includes('Network')
+                        ? 'Cannot connect to server. Please check your connection and ensure the backend is running on port 5000.'
+                        : 'Failed to get AI response. Please try again.',
+                    [{ text: 'OK' }]
                 );
-            }, 1000);
+            }
 
             return;
         }
@@ -540,11 +598,64 @@ export const ChatScreen = () => {
                     onPress: async () => {
                         try {
                             if (isMetaAIChat) {
-                                // For Meta AI: delete from AsyncStorage
-                                if (currentUserUid) {
-                                    await AsyncStorage.removeItem(`meta_ai_messages_${currentUserUid}`);
-                                    console.log('[ChatScreen] ✅ Meta AI messages deleted from AsyncStorage');
+                                // For Meta AI: delete from Firestore (backend creates chat rooms)
+                                const metaAIChatRoomId = `meta_ai_chat_${currentUserUid}`;
+                                const chatRoomRef = firestore()
+                                    .collection('chatRooms')
+                                    .doc(metaAIChatRoomId);
+
+                                // Check if chat room exists
+                                const chatRoomDoc = await chatRoomRef.get();
+                                
+                                if (chatRoomDoc.exists) {
+                                    // Get all messages first
+                                    const messagesSnapshot = await chatRoomRef
+                                        .collection('messages')
+                                        .get();
+
+                                    // Delete all messages in batches
+                                    const batches: any[] = [];
+                                    let currentBatch = firestore().batch();
+                                    let batchCount = 0;
+                                    const maxBatchSize = 500;
+
+                                    messagesSnapshot.docs.forEach((doc) => {
+                                        if (batchCount >= maxBatchSize) {
+                                            batches.push(currentBatch);
+                                            currentBatch = firestore().batch();
+                                            batchCount = 0;
+                                        }
+                                        currentBatch.delete(doc.ref);
+                                        batchCount++;
+                                    });
+
+                                    // Add the last batch if it has operations
+                                    if (batchCount > 0) {
+                                        batches.push(currentBatch);
+                                    }
+
+                                    // Commit all batches sequentially
+                                    for (const batch of batches) {
+                                        await batch.commit();
+                                    }
+
+                                    // Delete the chat room document
+                                    await chatRoomRef.delete();
+                                    console.log('[ChatScreen] ✅ Meta AI chat room and messages deleted from Firestore');
+
+                                    // Also clear any locally stored Meta AI messages
+                                    if (currentUserUid) {
+                                        await AsyncStorage.removeItem(`meta_ai_messages_${currentUserUid}`);
+                                        console.log('[ChatScreen] ✅ Meta AI messages removed from AsyncStorage after Firestore delete');
+                                    }
+                                } else {
+                                    // Fallback: delete from AsyncStorage if no Firestore room exists
+                                    if (currentUserUid) {
+                                        await AsyncStorage.removeItem(`meta_ai_messages_${currentUserUid}`);
+                                        console.log('[ChatScreen] ✅ Meta AI messages deleted from AsyncStorage (no Firestore room found)');
+                                    }
                                 }
+                                
                                 // Navigate back
                                 navigation.goBack();
                                 return;
@@ -688,8 +799,20 @@ export const ChatScreen = () => {
                                     ? participantsList.find((uid: string) => uid !== currentUserUid) || currentUserUid
                                     : currentUserUid;
                                 const seenBy = item.seenBy || [];
-                                const isSeen = seenBy.includes(otherUserUid) || (isSelfChat && seenBy.includes(currentUserUid));
-                                const isDelivered = item.delivered || isSeen || isSelfChat;
+                                
+                                // For self-chat: check if current user has seen their own message
+                                // For normal chat: check if other user has seen the message
+                                const isSeen = isSelfChat 
+                                    ? seenBy.includes(currentUserUid)
+                                    : seenBy.includes(otherUserUid);
+                                
+                                // Delivered status: check item.delivered (if seen, it's automatically delivered, but we check delivered first)
+                                const isDelivered = item.delivered === true;
+                                
+                                // Tick display logic:
+                                // - Single tick (✔) gray = sent but not delivered
+                                // - Double tick (✔✔) gray = delivered but not seen
+                                // - Double tick (✔✔) blue = seen
                                 
                                 return (
                                     <Text
@@ -852,8 +975,31 @@ export const ChatScreen = () => {
                             placeholder="Message"
                             placeholderTextColor={colors.textTertiary}
                             value={text}
-                            onChangeText={setText}
+                            onChangeText={(newText) => {
+                                const prevText = prevTextRef.current;
+                                
+                                // Check if Enter was pressed (newline added at the end)
+                                // If newText ends with '\n' and prevText didn't, and prevText is not empty,
+                                // it means Enter was pressed to send (not Shift+Enter for newline)
+                                if (newText.endsWith('\n') && !prevText.endsWith('\n') && prevText.trim()) {
+                                    // Enter pressed without Shift - send message
+                                    setText(prevText.trim()); // Use previous text (without newline)
+                                    prevTextRef.current = prevText.trim();
+                                    handleSendMessage();
+                                } else {
+                                    // Normal typing or Shift+Enter (newline in middle/end)
+                                    setText(newText);
+                                    prevTextRef.current = newText;
+                                }
+                            }}
                             multiline
+                            blurOnSubmit={false}
+                            onSubmitEditing={() => {
+                                // Fallback: send message when submit button is pressed
+                                if (text.trim()) {
+                                    handleSendMessage();
+                                }
+                            }}
                         />
                     </View>
                     

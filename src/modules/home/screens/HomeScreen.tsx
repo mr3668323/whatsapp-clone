@@ -330,9 +330,21 @@ export const HomeScreen = () => {
         console.log('[HomeScreen] Chat rooms loaded:', roomsWithMessages.length, 'rooms');
         console.log('[HomeScreen] Self-chat found:', roomsWithMessages.find((r: any) => r.isSelfChat) ? 'Yes' : 'No');
         
-        // Add Meta AI chat if messages exist
+        // Check if Meta AI chat already exists in Firestore rooms
+        const existingMetaAIChatIndex = roomsWithMessages.findIndex((room: any) => 
+          room.chatType === 'META_AI' || room.id?.startsWith('meta_ai_chat_')
+        );
+        
+        // Mark all chats and handle Meta AI
         let allChats = [...roomsWithMessages];
-        if (metaAIMessages.length > 0) {
+        
+        if (existingMetaAIChatIndex !== -1) {
+          // Use Firestore Meta AI chat (from backend)
+          const existingMetaAIChat = allChats[existingMetaAIChatIndex] as any;
+          existingMetaAIChat.isMetaAI = true;
+          existingMetaAIChat.otherUserName = 'Meta AI';
+        } else if (metaAIMessages.length > 0) {
+          // Fallback: Use AsyncStorage Meta AI chat if no Firestore one exists
           const lastMessage = metaAIMessages[metaAIMessages.length - 1];
           const metaAIChat = {
             id: 'meta_ai_chat',
@@ -348,6 +360,7 @@ export const HomeScreen = () => {
             updatedAt: lastMessage.createdAt,
             participants: [currentUserUid, 'meta_ai'],
             isMetaAI: true,
+            isSelfChat: false,
           };
           allChats.push(metaAIChat);
         }
@@ -368,7 +381,7 @@ export const HomeScreen = () => {
         });
         
         setChatRooms(allChats);
-      }, error => {
+      }, (error: any) => {
         console.error('[HomeScreen] Firestore listener error:', error);
         // If it's an index error, show helpful message
         if (error?.code === 'failed-precondition') {

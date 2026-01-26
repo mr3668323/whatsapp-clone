@@ -78,6 +78,7 @@ export const colors = {
   
   // Date Separator (WhatsApp style)
   dateSeparatorBackground: "rgba(0, 0, 0, 0.08)", // Light background for date chip
+  encryptionBanner: "#FFF9C4", // Lighter, less saturated yellow like WhatsApp
   
   // Shadows
   shadow: "rgba(0, 0, 0, 0.1)", 

@@ -162,6 +162,9 @@ export const chatScreenStyles = StyleSheet.create({
     color: colors.textTertiary, // gray ✔
     fontFamily: typography.fontFamily.regular,
   },
+  tickSent: {
+    color: colors.textTertiary, // gray ✔
+  },
   tickDelivered: {
     color: colors.textTertiary, // gray ✔✔
   },
@@ -245,7 +248,7 @@ export const chatScreenStyles = StyleSheet.create({
   encryptionBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF9C4', // Lighter, less saturated yellow like WhatsApp
+    backgroundColor: colors.encryptionBanner,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     gap: spacing.sm,
