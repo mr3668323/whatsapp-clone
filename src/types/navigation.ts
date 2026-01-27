@@ -13,6 +13,7 @@ export type RootStackParamList = {
   };
   Settings: undefined;
   Profile: undefined;
+  ContactProfile: { userId: string; userName?: string; phoneNumber?: string }
   ChatDetail: { chatId: string; chatName: string }
   NewChat: undefined;
 }

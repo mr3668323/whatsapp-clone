@@ -5,7 +5,8 @@ import { ChatDetailScreen } from '../modules/home/screens/ChatDetailScreen';
 import { ChatScreen } from '../modules/chat/screens/ChatScreen';
 import { SettingsScreen } from '../modules/settings/screens/SettingsScreen';
 import { ProfileScreen } from '../modules/settings/screens/ProfileScreen';
-import { NewChatScreen } from '../modules/chat/screens/NewChatScreen'; // ✅ ADD THIS
+import { NewChatScreen } from '../modules/chat/screens/NewChatScreen';
+import { ContactProfileScreen } from '../modules/chat/screens/ContactProfileScreen';
 import { useBackHandler } from '../hooks/useBackHandler';
 import type { RootStackParamList } from '../types/navigation';
 
@@ -64,6 +65,16 @@ export const AppStack: React.FC = () => {
       <Stack.Screen
         name="Profile"
         component={ProfileScreen}
+        options={{
+          headerShown: false,
+          animation: 'slide_from_right',
+          gestureEnabled: true,
+        }}
+      />
+
+      <Stack.Screen
+        name="ContactProfile"
+        component={ContactProfileScreen}
         options={{
           headerShown: false,
           animation: 'slide_from_right',

@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from "react"
 import { View, Image, Text, StatusBar } from "react-native"
 import auth, { FirebaseAuthTypes } from "@react-native-firebase/auth"
-import AsyncStorage from "@react-native-async-storage/async-storage"
-import { isPhoneAuthInProgress } from "../services/phoneAuthState"
 import { AuthStack } from "./AuthStack"
 import { AppStack } from "./AppStack"
 import { splashScreenStyles } from "../modules/auth/styles/SplashScreen.styles"
@@ -58,16 +56,12 @@ const AppNavigator: React.FC = () => {
     );
   }
 
-  const phoneAuthInProgress = isPhoneAuthInProgress();
-
-  // If Firebase has an authenticated user but phone auth is still in progress,
-  // show minimal view (native splash already hidden at this point)
-  if (user && phoneAuthInProgress) {
-    console.log('[AppNavigator] User authenticated but phone auth still in progress');
-    return null; // Minimal view - navigation will happen soon
-  }
-
-  // If Firebase has an authenticated user and no phone-auth flow is active, show AppStack
+  // CRITICAL FIX: Remove phoneAuthInProgress check that caused blank screen
+  // The issue: phoneAuthInProgress is a module variable, not reactive state
+  // When it changes, React doesn't re-render, causing AppNavigator to return null
+  // Solution: Rely only on Firebase auth state (user) which is reactive
+  
+  // If Firebase has an authenticated user, show AppStack immediately
   if (user) {
     console.log('[AppNavigator] Authenticated user found - showing AppStack. uid:', user.uid);
     return <AppStack />;

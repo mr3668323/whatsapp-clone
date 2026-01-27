@@ -1,22 +1,5 @@
 // Meta AI Service - Backend API Integration
-import { Platform } from 'react-native';
-
-// For Android emulator, use 10.0.2.2 instead of localhost
-// For iOS simulator, use localhost
-// For physical device, use your computer's IP address
-const getApiBaseUrl = () => {
-  if (__DEV__) {
-    // Android emulator uses 10.0.2.2 to access host machine's localhost
-    if (Platform.OS === 'android') {
-      return 'http://10.0.2.2:5000';
-    }
-    // iOS simulator can use localhost
-    return 'http://localhost:5000';
-  }
-  return 'https://your-production-api.com';
-};
-
-const API_BASE_URL = getApiBaseUrl();
+import { API_BASE_URL } from '../config/api';
 
 export interface MetaAIChatRequest {
   userId: string;

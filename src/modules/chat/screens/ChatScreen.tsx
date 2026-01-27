@@ -25,6 +25,8 @@ import { MetaAIAvatar } from '../../../components/chat/MetaAIAvatar';
 import { MetaAIFirstTimeScreen } from '../../../components/chat/MetaAIFirstTimeScreen';
 import { ChatMenu } from '../../../components/chat/ChatMenu';
 import { sendMessageToMetaAI } from '../../../services/metaAIService';
+import { getUserData } from '../../../services/userService';
+import { getChatRoomId } from '../../../utils/chatRoomId';
 
 type RouteParams = {
     chatId: string;
@@ -34,15 +36,30 @@ type RouteParams = {
 export const ChatScreen = () => {
     const route = useRoute<any>();
     const navigation = useNavigation();
-    const { chatId, chatName } = route.params as RouteParams;
+    let { chatId, chatName } = route.params as RouteParams;
+    
     // Treat both the initial frontend chatId ('meta_ai_chat') and the
     // backend Firestore chatId pattern ('meta_ai_chat_<userId>') as Meta AI chats
     const isMetaAIChat = chatId === 'meta_ai_chat' || chatId.startsWith('meta_ai_chat_');
+    
+    // CRITICAL FIX: Ensure chatRoomId is always sorted for normal chats
+    // This ensures User A and User B always use the same chatRoomId
+    if (!isMetaAIChat && chatId.includes('_')) {
+        const parts = chatId.split('_');
+        if (parts.length === 2) {
+            const sortedChatId = getChatRoomId(parts[0], parts[1]);
+            if (sortedChatId !== chatId) {
+                console.warn('[ChatScreen] ⚠️ chatId was not sorted! Correcting:', chatId, '→', sortedChatId);
+                chatId = sortedChatId;
+            }
+        }
+    }
 
     // Get current user UID (handles both Firebase Auth and manual auth)
     const [currentUserUid, setCurrentUserUid] = useState<string | null>(null);
     const [isSelfChat, setIsSelfChat] = useState(false);
     const [otherUserPhone, setOtherUserPhone] = useState<string>('');
+    const [otherUserUid, setOtherUserUid] = useState<string | null>(null);
 
     useEffect(() => {
         const getCurrentUserUid = async () => {
@@ -101,6 +118,7 @@ export const ChatScreen = () => {
                 const data = snapshot.data();
                 if (data) {
                     const participants: string[] = data.participants || [];
+                    setParticipants(participants);
                     const selfChat = participants.length === 1 && participants[0] === currentUserUid;
                     setIsSelfChat(selfChat);
                     
@@ -108,28 +126,32 @@ export const ChatScreen = () => {
                     if (!selfChat) {
                         const otherUid = participants.find(uid => uid !== currentUserUid);
                         if (otherUid) {
-                            // Try to get phone from user data
-                            firestore()
-                                .collection('users')
-                                .doc(otherUid)
-                                .get()
-                                .then(doc => {
-                                    const userData = doc.data();
-                                    setOtherUserPhone(userData?.phoneNumber || otherUid);
+                            setOtherUserUid(otherUid);
+                            // Use userService to get phone number (with proper fallbacks)
+                            getUserData(otherUid)
+                                .then(userData => {
+                                    if (userData?.phoneNumber) {
+                                        setOtherUserPhone(userData.phoneNumber);
+                                    } else {
+                                        // Fallback: use UID if it looks like a phone number, otherwise show UID
+                                        setOtherUserPhone(otherUid.startsWith('+') ? otherUid : otherUid);
+                                    }
                                 })
                                 .catch(() => {
+                                    // Final fallback: use UID
                                     setOtherUserPhone(otherUid);
                                 });
                         }
                     } else {
+                        setOtherUserUid(null);
                         // For self-chat, get current user's phone
-                        firestore()
-                            .collection('users')
-                            .doc(currentUserUid)
-                            .get()
-                            .then(doc => {
-                                const userData = doc.data();
-                                setOtherUserPhone(userData?.phoneNumber || currentUserUid);
+                        getUserData(currentUserUid)
+                            .then(userData => {
+                                if (userData?.phoneNumber) {
+                                    setOtherUserPhone(userData.phoneNumber);
+                                } else {
+                                    setOtherUserPhone(currentUserUid.startsWith('+') ? currentUserUid : currentUserUid);
+                                }
                             })
                             .catch(() => {
                                 setOtherUserPhone(currentUserUid);
@@ -856,7 +878,20 @@ export const ChatScreen = () => {
                     )}
                 </View>
                 
-                <View style={chatScreenStyles.headerInfo}>
+                <TouchableOpacity
+                    style={chatScreenStyles.headerInfo}
+                    onPress={() => {
+                        if (!isMetaAIChat && !isSelfChat && otherUserUid) {
+                            navigation.navigate('ContactProfile', {
+                                userId: otherUserUid,
+                                userName: chatName || 'Unknown',
+                                phoneNumber: otherUserPhone || undefined,
+                            });
+                        }
+                    }}
+                    disabled={isMetaAIChat || isSelfChat || !otherUserUid}
+                    activeOpacity={isMetaAIChat || isSelfChat || !otherUserUid ? 1 : 0.7}
+                >
                     {isMetaAIChat ? (
                         <>
                             <Text style={chatScreenStyles.headerTitle} numberOfLines={1}>
@@ -883,7 +918,7 @@ export const ChatScreen = () => {
                             )}
                         </>
                     )}
-                </View>
+                </TouchableOpacity>
                 
                 <View style={chatScreenStyles.headerActions}>
                     {isMetaAIChat ? (

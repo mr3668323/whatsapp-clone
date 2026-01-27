@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- 
+    CRITICAL: Allow cleartext HTTP traffic for development backend
+    This is required for Android 9+ (API 28+) when connecting to HTTP (non-HTTPS) servers
+    
+    For production, replace with HTTPS endpoints or domain-specific config
+    -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <!-- Trust system certificates -->
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+    
+    <!-- 
+    Optional: Domain-specific configuration for your backend
+    Replace 192.168.49.216 with your actual PC IP or use a domain
+    -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">192.168.49.216</domain>
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">10.0.2.2</domain>
+    </domain-config>
+</network-security-config>
