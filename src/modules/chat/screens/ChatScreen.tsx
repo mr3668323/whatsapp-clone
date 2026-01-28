@@ -172,8 +172,159 @@ export const ChatScreen = () => {
     const [userName, setUserName] = useState<string>('');
     // Menu visibility
     const [menuVisible, setMenuVisible] = useState(false);
+    
+    // WhatsApp-style scroll control
+    const flatListRef = useRef<FlatList<any>>(null);
+    const isAtBottomRef = useRef<boolean>(true); // Use ref to avoid stale closures
+    const lastMessageCountRef = useRef<number>(0);
+    const lastMessageSenderIdRef = useRef<string | null>(null); // Track last message sender
 
     // Removed formatDate - using formatDateSeparator from dateUtils instead
+
+    /* ==================== WHATSAPP-STYLE AUTO-SCROLL ==================== */
+    // Scroll to bottom when messages change, ONLY if user is at bottom
+    useEffect(() => {
+        if (messages.length === 0 || !currentUserUid) {
+            lastMessageCountRef.current = 0;
+            lastMessageSenderIdRef.current = null;
+            return;
+        }
+
+        const messageCountIncreased = messages.length > lastMessageCountRef.current;
+        const lastMessage = messages[messages.length - 1];
+        const lastMessageSenderId = lastMessage?.senderId || null;
+        const lastMessageId = lastMessage?.id || null;
+        const wasAtBottom = isAtBottomRef.current;
+        const previousCount = lastMessageCountRef.current;
+        const previousSenderId = lastMessageSenderIdRef.current;
+        const isIncoming = lastMessageSenderId && lastMessageSenderId !== currentUserUid;
+        const isNewIncomingMessage = isIncoming && (lastMessageId !== previousSenderId || messageCountIncreased);
+
+        // Update refs AFTER checking conditions (but before scrolling)
+        lastMessageCountRef.current = messages.length;
+        lastMessageSenderIdRef.current = lastMessageId; // Store message ID to detect new messages
+
+        // Auto-scroll conditions (WhatsApp behavior):
+        // 1. Message count increased (new message added - incoming OR outgoing)
+        // 2. User was at bottom before the update (or this is the first load)
+        // 3. CRITICAL: For incoming messages, be very aggressive - always scroll unless user explicitly scrolled up
+        if (messageCountIncreased && flatListRef.current) {
+            // For incoming messages: always scroll unless user has explicitly scrolled up (wasAtBottom === false)
+            // For outgoing messages: scroll if user was at bottom
+            // Default: if previousCount === 0 (first load), always scroll
+            const shouldAutoScroll = previousCount === 0 || 
+                                    wasAtBottom || 
+                                    (isIncoming && wasAtBottom !== false); // Incoming: scroll unless explicitly false
+            
+            if (shouldAutoScroll) {
+                console.log('[ChatScreen] ✅ Auto-scrolling: incoming=', isIncoming, 
+                    'wasAtBottom=', wasAtBottom, 'previousCount=', previousCount, 
+                    'newCount=', messages.length, 'senderId=', lastMessageSenderId, 'messageId=', lastMessageId);
+                
+                // Use requestAnimationFrame for better timing with React Native's render cycle
+                requestAnimationFrame(() => {
+                    setTimeout(() => {
+                        if (flatListRef.current) {
+                            // Always scroll if user was at bottom before (they might not have scrolled during delay)
+                            // This ensures incoming messages are visible
+                            try {
+                                flatListRef.current.scrollToEnd({ animated: true });
+                                isAtBottomRef.current = true; // Ensure ref stays true after scroll
+                                console.log('[ChatScreen] ✅ Scrolled to end successfully');
+                            } catch (error) {
+                                console.log('[ChatScreen] scrollToEnd failed, trying scrollToIndex:', error);
+                                // Fallback: scroll to last index
+                                try {
+                                    flatListRef.current.scrollToIndex({ 
+                                        index: messages.length - 1, 
+                                        animated: true,
+                                        viewPosition: 1 // Ensure it's at the bottom
+                                    });
+                                    isAtBottomRef.current = true;
+                                    console.log('[ChatScreen] ✅ Scrolled to index successfully');
+                                } catch (e) {
+                                    console.log('[ChatScreen] scrollToIndex failed, trying scrollToEnd (no animation):', e);
+                                    // Final fallback: scroll without animation
+                                    try {
+                                        flatListRef.current.scrollToEnd({ animated: false });
+                                        isAtBottomRef.current = true;
+                                        console.log('[ChatScreen] ✅ Scrolled to end (no animation)');
+                                    } catch (finalError) {
+                                        console.error('[ChatScreen] ❌ All scroll methods failed:', finalError);
+                                    }
+                                }
+                            }
+                        }
+                    }, 300); // Increased delay for better reliability with Firestore updates
+                });
+            } else {
+                console.log('[ChatScreen] ❌ NOT auto-scrolling: user scrolled up, wasAtBottom=', wasAtBottom, 
+                    'isIncoming=', isIncoming, 'previousCount=', previousCount);
+            }
+        } else if (messageCountIncreased) {
+            console.log('[ChatScreen] ⚠️ Message count increased but flatListRef is null');
+        } else {
+            // Log when effect runs but no scroll happens
+            console.log('[ChatScreen] ℹ️ Effect ran: messageCountIncreased=', messageCountIncreased, 
+                'messages.length=', messages.length, 'lastMessageCountRef=', lastMessageCountRef.current);
+        }
+    }, [messages, currentUserUid]); // Watch messages array to detect new messages
+
+    // Scroll to bottom on initial mount and ensure isAtBottomRef is set
+    useEffect(() => {
+        // Reset to true when chat changes (user opens a new chat)
+        // This ensures that when user opens a chat, they start at bottom
+        isAtBottomRef.current = true;
+        lastMessageCountRef.current = 0;
+        lastMessageSenderIdRef.current = null;
+        
+        if (messages.length > 0) {
+            setTimeout(() => {
+                if (flatListRef.current) {
+                    try {
+                        flatListRef.current.scrollToEnd({ animated: false });
+                        isAtBottomRef.current = true;
+                        console.log('[ChatScreen] Initial scroll to bottom completed');
+                    } catch (error) {
+                        try {
+                            flatListRef.current.scrollToIndex({ 
+                                index: messages.length - 1, 
+                                animated: false 
+                            });
+                            isAtBottomRef.current = true;
+                        } catch (e) {
+                            // Ignore
+                        }
+                    }
+                }
+            }, 400);
+        }
+    }, [chatId]); // Only when chat changes
+
+    // Track scroll position to detect if user is at bottom
+    const handleScroll = (event: any) => {
+        const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+        
+        // Calculate distance from bottom
+        const scrollOffset = contentOffset.y;
+        const contentHeight = contentSize.height;
+        const viewportHeight = layoutMeasurement.height;
+        const distanceFromBottom = contentHeight - (scrollOffset + viewportHeight);
+        
+        // User is at bottom if within 100px threshold (WhatsApp-like precision)
+        // Increased threshold to be more forgiving - user might be slightly above but still want to see new messages
+        const atBottom = distanceFromBottom < 100;
+        
+        // Only update if it changed (to avoid unnecessary re-renders)
+        if (isAtBottomRef.current !== atBottom) {
+            isAtBottomRef.current = atBottom;
+            if (!atBottom) {
+                console.log('[ChatScreen] User scrolled up, distanceFromBottom=', Math.round(distanceFromBottom));
+            } else {
+                console.log('[ChatScreen] User scrolled back to bottom');
+            }
+        }
+    };
 
     /* ==================== LOAD USER NAME FOR META AI ==================== */
     useEffect(() => {
@@ -250,8 +401,27 @@ export const ChatScreen = () => {
                             // Filter out temporary messages (those with temp_ prefix) when we have real Firestore messages
                             const finalMsgs = uniqueMsgs.filter((msg: any) => !msg.id?.startsWith('temp_'));
                             
-                            console.log('[ChatScreen] Meta AI messages loaded from Firestore:', finalMsgs.length, '(deduplicated from', msgs.length, ')');
-                            setMessages(finalMsgs);
+                            // CRITICAL FIX: For Meta AI user messages, always mark as delivered
+                            // Meta AI is a system chat - user messages are always "delivered" when saved to Firestore
+                            // This prevents tick downgrade (backend saves with seenBy: [], but we override for Meta AI)
+                            const processedMsgs = finalMsgs.map((msg: any) => {
+                                // For Meta AI user messages: always mark as delivered
+                                // Meta AI is not a real user, so "delivered" means message was saved to system
+                                if (msg.senderId === currentUserUid && msg.senderId !== 'meta_ai') {
+                                    return {
+                                        ...msg,
+                                        delivered: true, // Always delivered for Meta AI (system chat)
+                                        seen: true, // Meta AI is system, user message is always "seen"
+                                        seenBy: [currentUserUid], // User has "seen" their own message in system
+                                    };
+                                }
+                                return msg;
+                            });
+                            
+                            console.log('[ChatScreen] Meta AI messages loaded from Firestore:', processedMsgs.length, '(deduplicated from', msgs.length, ')');
+                            // CRITICAL: Don't update lastMessageCountRef here - let the effect detect the change
+                            // This ensures auto-scroll triggers when Meta AI sends a reply
+                            setMessages(processedMsgs);
                             
                             // Also save to AsyncStorage as backup
                             const serializable = msgs.map((msg: any) => ({
@@ -275,6 +445,7 @@ export const ChatScreen = () => {
                                             return msg;
                                         });
                                         console.log('[ChatScreen] Meta AI messages loaded from AsyncStorage:', messagesWithTimestamps.length);
+                                        // Don't update lastMessageCountRef here - let the effect handle it
                                         setMessages(messagesWithTimestamps);
                                     }
                                 } catch (error) {
@@ -298,6 +469,7 @@ export const ChatScreen = () => {
                                         }
                                         return msg;
                                     });
+                                    // Don't update lastMessageCountRef here - let the effect handle it
                                     setMessages(messagesWithTimestamps);
                                 }
                             } catch (err) {
@@ -324,6 +496,8 @@ export const ChatScreen = () => {
                     ...doc.data(),
                 }));
                 console.log('[ChatScreen] Messages loaded:', msgs.length, 'messages');
+                // CRITICAL: Don't update lastMessageCountRef here - let the effect detect the change
+                // This ensures auto-scroll triggers when new messages arrive
                 setMessages(msgs);
             }, error => {
                 console.error('[ChatScreen] Error loading messages:', error);
@@ -489,17 +663,18 @@ export const ChatScreen = () => {
 
         // Handle Meta AI chat - call backend API
         if (isMetaAIChat) {
-            // Optimistically add user message to UI immediately
-            const tempUserMessage = {
-                id: `temp_${Date.now()}_user`,
-                text: messageText,
-                senderId: currentUserUid,
-                createdAt: firestore.Timestamp.now(),
-                seen: true,
-                delivered: true,
-                seenBy: [currentUserUid],
-            };
-            setMessages([...messages, tempUserMessage]);
+            // OPTION A: Remove optimistic message - wait for Firestore
+            // This prevents tick downgrade issues
+            // Backend will save the message and Firestore listener will update UI
+            // No optimistic message needed - Firestore is fast enough
+            
+            // Note: We could add optimistic message, but it causes tick flickering
+            // when Firestore overwrites it. Better to wait for Firestore.
+            
+            // Always scroll to bottom when user sends a message
+            // Set ref to true immediately so the effect knows to scroll
+            isAtBottomRef.current = true;
+            // Scroll will happen automatically when Firestore updates messages
 
             // Call backend API - backend will save both user message and AI response to Firestore
             try {
@@ -513,8 +688,8 @@ export const ChatScreen = () => {
             } catch (error: any) {
                 console.error('[ChatScreen] ❌ Error getting AI response:', error);
                 
-                // Remove the optimistic user message on error
-                setMessages(prev => prev.filter(msg => msg.id !== tempUserMessage.id));
+                // No optimistic message to remove (we removed it to prevent tick flickering)
+                // Error handling: message wasn't sent, so nothing to clean up
                 
                 // Show error to user
                 Alert.alert(
@@ -602,6 +777,32 @@ export const ChatScreen = () => {
         }
 
         await chatRoomRef.update(updateData);
+        
+        // Always scroll to bottom when user sends a message (normal chat)
+        // Set ref to true immediately so the effect knows to scroll
+        isAtBottomRef.current = true;
+        requestAnimationFrame(() => {
+            setTimeout(() => {
+                if (flatListRef.current) {
+                    try {
+                        flatListRef.current.scrollToEnd({ animated: true });
+                        isAtBottomRef.current = true;
+                    } catch (error) {
+                        try {
+                            const currentLength = messages.length + 1;
+                            flatListRef.current.scrollToIndex({ 
+                                index: currentLength - 1, 
+                                animated: true,
+                                viewPosition: 1
+                            });
+                            isAtBottomRef.current = true;
+                        } catch (e) {
+                            // Ignore
+                        }
+                    }
+                }
+            }, 150);
+        });
     }, [text, chatId, currentUserUid, isMetaAIChat, messages]);
 
     /* ==================== DELETE CHAT ==================== */
@@ -629,7 +830,7 @@ export const ChatScreen = () => {
                                 // Check if chat room exists
                                 const chatRoomDoc = await chatRoomRef.get();
                                 
-                                if (chatRoomDoc.exists) {
+                                if (chatRoomDoc.exists()) {
                                     // Get all messages first
                                     const messagesSnapshot = await chatRoomRef
                                         .collection('messages')
@@ -814,6 +1015,27 @@ export const ChatScreen = () => {
                                 {timeStr}
                             </Text>
                             {isMe && (() => {
+                                // META AI SPECIAL HANDLING: Meta AI is a system chat, not a real user
+                                // User messages to Meta AI are always "delivered" (saved to system)
+                                // There is no "seen by other user" concept for Meta AI
+                                if (isMetaAIChat) {
+                                    // For Meta AI: always show delivered ticks (✔✔ gray)
+                                    // Meta AI is system, so user messages are always delivered when saved
+                                    const isDelivered = item.delivered !== false; // Default to true for Meta AI
+                                    
+                                    return (
+                                        <Text
+                                            style={[
+                                                chatScreenStyles.tickText,
+                                                chatScreenStyles.tickDelivered, // Always gray double tick for Meta AI
+                                            ]}
+                                        >
+                                            {'✔✔'}
+                                        </Text>
+                                    );
+                                }
+                                
+                                // NORMAL CHAT HANDLING
                                 // Get other user UID to check if they've seen the message
                                 // Use participants state (defined above)
                                 const participantsList = participants.length > 0 ? participants : [];
@@ -829,21 +1051,27 @@ export const ChatScreen = () => {
                                     : seenBy.includes(otherUserUid);
                                 
                                 // Delivered status: check item.delivered (if seen, it's automatically delivered, but we check delivered first)
-                                const isDelivered = item.delivered === true;
+                                // CRITICAL: Never downgrade - if message was already delivered/seen, preserve that state
+                                const wasDelivered = item.delivered === true;
+                                const wasSeen = isSeen;
                                 
                                 // Tick display logic:
                                 // - Single tick (✔) gray = sent but not delivered
                                 // - Double tick (✔✔) gray = delivered but not seen
                                 // - Double tick (✔✔) blue = seen
+                                // NEVER downgrade: once delivered/seen, stay that way
+                                
+                                const isDelivered = wasDelivered;
+                                const finalIsSeen = wasSeen;
                                 
                                 return (
                                     <Text
                                         style={[
                                             chatScreenStyles.tickText,
-                                            isSeen ? chatScreenStyles.tickSeen : (isDelivered ? chatScreenStyles.tickDelivered : chatScreenStyles.tickSent),
+                                            finalIsSeen ? chatScreenStyles.tickSeen : (isDelivered ? chatScreenStyles.tickDelivered : chatScreenStyles.tickSent),
                                         ]}
                                     >
-                                        {isSeen ? '✔✔' : (isDelivered ? '✔✔' : '✔')}
+                                        {finalIsSeen ? '✔✔' : (isDelivered ? '✔✔' : '✔')}
                                     </Text>
                                 );
                             })()}
@@ -882,7 +1110,7 @@ export const ChatScreen = () => {
                     style={chatScreenStyles.headerInfo}
                     onPress={() => {
                         if (!isMetaAIChat && !isSelfChat && otherUserUid) {
-                            navigation.navigate('ContactProfile', {
+                            (navigation as any).navigate('ContactProfile', {
                                 userId: otherUserUid,
                                 userName: chatName || 'Unknown',
                                 phoneNumber: otherUserPhone || undefined,
@@ -974,11 +1202,15 @@ export const ChatScreen = () => {
                     />
                 ) : (
                     <FlatList
+                        ref={flatListRef}
                         data={messages}
                         keyExtractor={item => item.id}
                         renderItem={renderMessage}
                         contentContainerStyle={chatScreenStyles.messageList}
                         inverted={false}
+                        showsVerticalScrollIndicator={false}
+                        onScroll={handleScroll}
+                        scrollEventThrottle={16}
                         ListHeaderComponent={
                             isMetaAIChat && messages.length > 0 ? (
                                 <View style={{ paddingVertical: spacing.sm }}>
