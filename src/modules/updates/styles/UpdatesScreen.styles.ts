@@ -70,9 +70,9 @@ export const updatesScreenStyles = StyleSheet.create({
     padding: spacing.xs,
   },
   searchBackIcon: {
-    fontSize: typography.fontSize.lg,
-    fontFamily: typography.fontFamily.regular,
-    color: colors.textSecondary,
+    width: typography.fontSize.lg * 1.2,
+    height: typography.fontSize.lg * 1.2,
+    tintColor: colors.textSecondary,
   },
   searchInput: {
     flex: 1,

@@ -6,7 +6,7 @@ import { spacing } from "../../../styles/spacing";
 export const privacyPolicyStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.white, // Pure white background
   },
   
   // Header
@@ -17,7 +17,7 @@ export const privacyPolicyStyles = StyleSheet.create({
     paddingHorizontal: spacing.base,
     paddingTop: spacing.base + spacing.xs,
     paddingBottom: spacing.md,
-    backgroundColor: colors.background,
+    backgroundColor: colors.white, // Pure white header
     borderBottomWidth: 0.5,
     borderBottomColor: colors.border,
   },
@@ -29,12 +29,10 @@ export const privacyPolicyStyles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'flex-start',
   },
-  backButtonIcon: {
-    fontSize: typography.fontSize["3xl"],
-    fontFamily: typography.fontFamily.regular,
-    color: colors.textPrimary,
-    fontWeight: typography.fontWeight.normal,
-    marginLeft: -spacing.xs,
+  backIcon: {
+    width: typography.fontSize.lg * 1.2,
+    height: typography.fontSize.lg * 1.2,
+    tintColor: colors.textPrimary,
   },
   
   // Menu Button
@@ -46,17 +44,10 @@ export const privacyPolicyStyles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'flex-end',
   },
-  menuIconContainer: {
-    width: 24,
-    height: 20,
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  menuDot: {
-    width: 4,
-    height: 3,
-    borderRadius: 1,
-    backgroundColor: colors.textPrimary,
+  menuIcon: {
+    width: typography.fontSize.lg * 1.3,
+    height: typography.fontSize.lg * 1.3,
+    tintColor: colors.textPrimary,
   },
   
   // Dropdown Menu
@@ -110,51 +101,58 @@ export const privacyPolicyStyles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing["3xl"],
+    paddingTop: spacing["2xl"] + spacing.md, // Logo closer to top (reduced from 4xl)
+    paddingBottom: spacing.buttonHeight + spacing.xl + spacing.md, // Space for fixed button
     alignItems: 'center',
   },
   
   logoContainer: {
     alignItems: 'center',
-    marginTop: spacing["3xl"] + spacing.xs,
-    marginBottom: spacing["2xl"],
+    marginTop: 0,
+    marginBottom: spacing["3xl"] + spacing.xl, // Larger gap between logo and title (matching WhatsApp exactly)
   },
   whatsappLogo: {
-    width: 100,
-    height: 100,
-    borderRadius: spacing.buttonHeight + spacing.sm,
-    backgroundColor: colors.whatsappGreen,
+    width: 70, // WhatsApp exact size
+    height: 70,
   },
   
   title: {
-    marginTop: spacing.xl,
-    fontSize: typography.fontSize["3xl"],
-    fontFamily: typography.fontFamily.bold,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
-    marginBottom: spacing.xl,
+    marginTop: 0,
+    fontSize: typography.fontSize["2xl"], // 24px - WhatsApp exact
+    fontFamily: typography.fontFamily.semibold, // Medium/semi-bold, not bold
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.textPrimary, // Pure black
+    marginBottom: spacing.md, // Tight spacing before description
     textAlign: 'center',
-    lineHeight: typography.lineHeight.description + spacing.xs,
+    lineHeight: typography.fontSize["2xl"] * 1.2, // Comfortable line height
   },
   
   description: {
-    fontSize: typography.fontSize.lg,
-    color: colors.textSecondary,
+    fontSize: typography.fontSize.base, // 15px - smaller than title
+    color: colors.textSecondary, // WhatsApp grey
     textAlign: 'center',
-    lineHeight: typography.lineHeight.description,
-    marginBottom: spacing["4xl"],
+    lineHeight: typography.fontSize.base * 1.5, // Increased line height for comfortable reading
+    marginBottom: 0, // No bottom margin (button is separate)
     paddingHorizontal: spacing.lg,
   },
   
   linkText: {
-    color: colors.whatsappBlue,
-    fontWeight: typography.fontWeight.semibold,
+    color: colors.whatsappBlue, // WhatsApp blue
+    fontWeight: typography.fontWeight.normal, // No extra weight (default link styling)
   },
   
+  // Bottom-Fixed Button Container (Absolute Positioning Strategy)
   buttonContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     width: '100%',
-    marginTop: 'auto',
-    paddingTop: spacing.xl,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xl + spacing.md, // Space above system navigation bar
+    backgroundColor: colors.white, // White background to cover scroll content
+    borderTopWidth: 0.5,
+    borderTopColor: colors.border, // Subtle top border
   },
 });

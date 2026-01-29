@@ -478,9 +478,11 @@ export const NewChatScreen: React.FC = () => {
           style={newChatScreenStyles.backButton}
           activeOpacity={0.7}
         >
-          <Text style={newChatScreenStyles.backButtonText}>
-            ←
-          </Text>
+          <Image
+            source={require('../../../assets/icons/back.png')}
+            style={newChatScreenStyles.backIcon}
+            resizeMode="contain"
+          />
         </TouchableOpacity>
         
         <Text style={newChatScreenStyles.headerTitle}>

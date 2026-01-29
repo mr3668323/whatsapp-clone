@@ -1028,7 +1028,11 @@ export const OTPVerificationScreen: React.FC<OTPVerificationScreenProps> = ({ ro
                             onPress={() => setMenuVisible(true)}
                             disabled={isVerifying}
                         >
-                            <Text style={phoneVerificationStyles.menuIcon}>⋮</Text>
+                            <Image
+                                source={require('../../../assets/icons/menu-bar.png')}
+                                style={phoneVerificationStyles.menuIcon}
+                                resizeMode="contain"
+                            />
                         </TouchableOpacity>
                     </View>
 

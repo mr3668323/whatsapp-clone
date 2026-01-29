@@ -23,9 +23,10 @@ export const newChatScreenStyles = StyleSheet.create({
     marginRight: spacing.sm,
     padding: spacing.xs,
   },
-  backButtonText: {
-    fontSize: typography.fontSize.xl,
-    color: colors.textPrimary,
+  backIcon: {
+    width: typography.fontSize.lg * 1.2,
+    height: typography.fontSize.lg * 1.2,
+    tintColor: colors.textPrimary,
   },
   headerTitle: {
     fontSize: typography.fontSize.lg,

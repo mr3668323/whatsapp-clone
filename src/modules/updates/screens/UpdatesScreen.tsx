@@ -188,7 +188,11 @@ export const UpdatesScreen: React.FC = () => {
               onPress={exitSearchMode}
               style={updatesScreenStyles.searchBackButton}
             >
-              <Text style={updatesScreenStyles.searchBackIcon}>←</Text>
+              <Image
+                source={require('../../../assets/icons/back.png')}
+                style={updatesScreenStyles.searchBackIcon}
+                resizeMode="contain"
+              />
             </TouchableOpacity>
             
             <TextInput

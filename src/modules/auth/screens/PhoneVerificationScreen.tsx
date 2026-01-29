@@ -116,7 +116,11 @@ export const PhoneVerificationScreen: React.FC<PhoneVerificationScreenProps> = (
           style={phoneVerificationStyles.menuButton}
           onPress={() => setMenuVisible(true)}
         >
-          <Text style={phoneVerificationStyles.menuIcon}>⋮</Text>
+          <Image
+            source={require('../../../assets/icons/menu-bar.png')}
+            style={phoneVerificationStyles.menuIcon}
+            resizeMode="contain"
+          />
         </TouchableOpacity>
       </View>
 

@@ -50,20 +50,24 @@ export const PrivacyPolicyScreen: React.FC<PrivacyPolicyScreenProps> = ({ naviga
 
     return (
         <View style={privacyPolicyStyles.container}>
-            <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+            <StatusBar barStyle="dark-content" backgroundColor={colors.white} />
 
             {/* Header */}
             <View style={privacyPolicyStyles.header}>
                 <TouchableOpacity onPress={handleBack} style={privacyPolicyStyles.backButton}>
-                    <Text style={privacyPolicyStyles.backButtonIcon}>←</Text>
+                    <Image
+                        source={require('../../../assets/icons/back.png')}
+                        style={privacyPolicyStyles.backIcon}
+                        resizeMode="contain"
+                    />
                 </TouchableOpacity>
                 
                 <TouchableOpacity onPress={handleMenu} style={privacyPolicyStyles.menuButton}>
-                    <View style={privacyPolicyStyles.menuIconContainer}>
-                        <View style={privacyPolicyStyles.menuDot} />
-                        <View style={privacyPolicyStyles.menuDot} />
-                        <View style={privacyPolicyStyles.menuDot} />
-                    </View>
+                    <Image
+                        source={require('../../../assets/icons/menu-bar.png')}
+                        style={privacyPolicyStyles.menuIcon}
+                        resizeMode="contain"
+                    />
                 </TouchableOpacity>
             </View>
 
@@ -91,6 +95,7 @@ export const PrivacyPolicyScreen: React.FC<PrivacyPolicyScreenProps> = ({ naviga
                 </TouchableOpacity>
             </Modal>
 
+            {/* Content Area - Scrollable */}
             <ScrollView
                 style={privacyPolicyStyles.scrollView}
                 contentContainerStyle={privacyPolicyStyles.scrollContent}
@@ -116,17 +121,18 @@ export const PrivacyPolicyScreen: React.FC<PrivacyPolicyScreenProps> = ({ naviga
                         Terms of Service
                     </Text>.
                 </Text>
-
-                <View style={privacyPolicyStyles.buttonContainer}>
-                    <AppButton
-                        label="Agree and continue"
-                        variant="primary"
-                        size="medium"
-                        fullWidth
-                        onPress={handleAgreeAndContinue}
-                    />
-                </View>
             </ScrollView>
+
+            {/* Bottom-Fixed Button */}
+            <View style={privacyPolicyStyles.buttonContainer}>
+                <AppButton
+                    label="Agree and continue"
+                    variant="primary"
+                    size="medium"
+                    fullWidth
+                    onPress={handleAgreeAndContinue}
+                />
+            </View>
         </View>
     );
 };
