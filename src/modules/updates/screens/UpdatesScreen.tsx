@@ -248,6 +248,7 @@ export const UpdatesScreen: React.FC = () => {
             <View style={updatesScreenStyles.myStatusAvatar}>
               <Text style={updatesScreenStyles.myStatusAvatarText}>{item.avatar}</Text>
             </View>
+            {/* Add photo/video status icon (existing WhatsApp-style plus) */}
             <View style={updatesScreenStyles.addStatusIcon}>
               <Text style={updatesScreenStyles.addStatusIconText}>+</Text>
             </View>
@@ -428,12 +429,31 @@ export const UpdatesScreen: React.FC = () => {
           )}
         </ScrollView>
 
-        {/* Floating Action Buttons */}
+        {/* Floating Action Buttons (Text status + Camera status) */}
         <View style={updatesScreenStyles.fabContainer}>
-          <TouchableOpacity style={updatesScreenStyles.pencilFab}>
-            <Text style={updatesScreenStyles.pencilIcon}>✏️</Text>
+          {/* Text status (pencil) - smaller FAB above camera, WhatsApp-style */}
+          <TouchableOpacity
+            style={updatesScreenStyles.pencilFab}
+            onPress={() => {
+              console.log('Text status FAB pressed');
+            }}
+            activeOpacity={0.8}
+          >
+            <Image
+              source={require('../../../assets/icons/text.png')}
+              style={updatesScreenStyles.pencilIconImage}
+              resizeMode="contain"
+            />
           </TouchableOpacity>
-          <TouchableOpacity style={updatesScreenStyles.cameraFab}>
+
+          {/* Camera status (photo/video) */}
+          <TouchableOpacity
+            style={updatesScreenStyles.cameraFab}
+            onPress={() => {
+              console.log('Camera status FAB pressed');
+            }}
+            activeOpacity={0.8}
+          >
             <Image
               source={require('../../../assets/icons/whatsapp-camera.png')}
               style={updatesScreenStyles.cameraIcon}

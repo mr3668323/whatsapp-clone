@@ -41,9 +41,10 @@ export const callCardStyles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.xs,
   },
-  callTypeIcon: {
-    fontSize: typography.fontSize.sm,
-    fontFamily: typography.fontFamily.regular,
+  callTypeIconBullet: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   callTypeText: {
     fontSize: typography.fontSize.sm,
@@ -58,16 +59,16 @@ export const callCardStyles = StyleSheet.create({
     padding: spacing.xs,
   },
   videoIcon: {
-    fontSize: typography.fontSize.lg,
-    fontFamily: typography.fontFamily.regular,
-    color: colors.iconGray,
+    width: spacing.iconSize,
+    height: spacing.iconSize,
+    tintColor: colors.textPrimary,
   },
   audioButton: {
     padding: spacing.xs,
   },
   audioIcon: {
-    fontSize: typography.fontSize.lg,
-    fontFamily: typography.fontFamily.regular,
-    color: colors.iconGray,
+    width: spacing.iconSize,
+    height: spacing.iconSize,
+    tintColor: colors.textPrimary,
   },
 });

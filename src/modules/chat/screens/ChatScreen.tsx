@@ -11,6 +11,7 @@ import {
     Platform,
     Alert,
     Image,
+    Keyboard,
 } from 'react-native';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
@@ -176,6 +177,9 @@ export const ChatScreen = () => {
     const [userName, setUserName] = useState<string>('');
     // Menu visibility
     const [menuVisible, setMenuVisible] = useState(false);
+    // Input + emoji keyboard toggle
+    const inputRef = useRef<TextInput | null>(null);
+    const [isEmojiKeyboardOpen, setIsEmojiKeyboardOpen] = useState(false);
 
     // Removed manual scroll management – inverted FlatList + maintainVisibleContentPosition
     // will handle WhatsApp-like behavior (pinned to bottom when at bottom, no jump when scrolled up).
@@ -816,6 +820,36 @@ export const ChatScreen = () => {
         setMenuVisible(false);
     }, []);
 
+    /* ==================== EMOJI / KEYBOARD TOGGLE ==================== */
+    const handleEmojiToggle = useCallback(() => {
+        if (!inputRef.current) return;
+
+        if (isEmojiKeyboardOpen) {
+            // User tapped the keyboard icon while emoji panel is conceptually open.
+            // Workaround: briefly dismiss, then refocus TextInput so system shows normal text keyboard.
+            Keyboard.dismiss();
+            requestAnimationFrame(() => {
+                inputRef.current && inputRef.current.focus();
+            });
+            setIsEmojiKeyboardOpen(false);
+        } else {
+            // User tapped emoji icon – keep TextInput focused and let the OS switch keyboard mode.
+            inputRef.current.focus();
+            setIsEmojiKeyboardOpen(true);
+        }
+    }, [isEmojiKeyboardOpen]);
+
+    // If keyboard is fully hidden (user swiped it down), reset toggle icon to emoji state.
+    useEffect(() => {
+        const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+            setIsEmojiKeyboardOpen(false);
+        });
+
+        return () => {
+            hideSub.remove();
+        };
+    }, []);
+
     // Using formatMessageTime from dateUtils - shows only time (hh:mm AM/PM)
 
     /* ==================== RENDER MESSAGE ==================== */
@@ -1186,10 +1220,18 @@ export const ChatScreen = () => {
                 <View style={chatScreenStyles.inputContainer}>
                     {/* Main pill container: sticker + input + attach + camera (WhatsApp-like) */}
                     <View style={chatScreenStyles.inputWrapper}>
-                        {/* Sticker icon on the left inside the pill */}
-                        <TouchableOpacity style={chatScreenStyles.stickerButton}>
+                        {/* Emoji / keyboard toggle on the left inside the pill (WhatsApp-like) */}
+                        <TouchableOpacity
+                            style={chatScreenStyles.stickerButton}
+                            onPress={handleEmojiToggle}
+                            activeOpacity={0.7}
+                        >
                             <Image
-                                source={require('../../../assets/icons/sticker.png')}
+                                source={
+                                    isEmojiKeyboardOpen
+                                        ? require('../../../assets/icons/keyboard.png')
+                                        : require('../../../assets/icons/sticker.png')
+                                }
                                 style={chatScreenStyles.stickerIcon}
                                 resizeMode="contain"
                             />
@@ -1197,10 +1239,15 @@ export const ChatScreen = () => {
 
                         {/* Text input */}
                         <TextInput
+                            ref={inputRef}
                             style={chatScreenStyles.input}
                             placeholder="Message"
                             placeholderTextColor={colors.textTertiary}
                             value={text}
+                            onFocus={() => {
+                                // When user taps directly into input, default back to text keyboard icon.
+                                setIsEmojiKeyboardOpen(false);
+                            }}
                             onChangeText={(newText) => {
                                 const prevText = prevTextRef.current;
                                 

@@ -55,7 +55,7 @@ export const callsScreenStyles = StyleSheet.create({
   },
   quickActionButton: {
     alignItems: 'center',
-    width: 70,
+    width: spacing.avatarSize + spacing.lg,
   },
   quickActionIconContainer: {
     width: spacing.avatarSize,
@@ -67,9 +67,9 @@ export const callsScreenStyles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   quickActionIcon: {
-    fontSize: typography.fontSize.xl,
-    fontFamily: typography.fontFamily.regular,
-    color: colors.iconGray,
+    width: spacing.iconSize * 1.4,
+    height: spacing.iconSize * 1.4,
+    tintColor: colors.textPrimary,
   },
   quickActionLabel: {
     fontSize: typography.fontSize.xs,
@@ -126,28 +126,9 @@ export const callsScreenStyles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: spacing.xs,
   },
-  fabContent: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  fabIcon: {
-    fontSize: typography.fontSize.xl,
-    fontFamily: typography.fontFamily.bold,
-    color: colors.white,
-  },
-  fabPlus: {
-    position: 'absolute',
-    bottom: -spacing.xxs,
-    right: -spacing.xxs,
-    fontSize: typography.fontSize.xs,
-    fontFamily: typography.fontFamily.bold,
-    color: colors.white,
-    backgroundColor: colors.whatsappGreen,
-    borderRadius: spacing.sm,
-    width: spacing.base,
-    height: spacing.base,
-    textAlign: 'center',
-    lineHeight: spacing.base,
+  fabIconImage: {
+    width: spacing.iconSize * 0.8,
+    height: spacing.iconSize * 0.8,
+    tintColor: colors.white,
   },
 });

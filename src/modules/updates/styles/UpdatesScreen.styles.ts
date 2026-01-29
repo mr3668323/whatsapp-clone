@@ -351,10 +351,10 @@ export const updatesScreenStyles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   pencilFab: {
-    width: spacing.iconSize * 2,
-    height: spacing.iconSize * 2,
-    borderRadius: spacing.iconSize,
-    backgroundColor: colors.unreadBackground,
+    width: spacing.avatarSize * 0.7,
+    height: spacing.avatarSize * 0.7,
+    borderRadius: (spacing.avatarSize * 0.7) / 2,
+    backgroundColor: colors.white, // white circular background like WhatsApp
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.md,
@@ -364,9 +364,10 @@ export const updatesScreenStyles = StyleSheet.create({
     shadowRadius: spacing.xs,
     elevation: 2,
   },
-  pencilIcon: {
-    fontSize: typography.fontSize["2xl"],
-    fontFamily: typography.fontFamily.regular,
+  pencilIconImage: {
+    width: spacing.iconSize * 1.1,
+    height: spacing.iconSize * 1.1,
+    tintColor: colors.textSecondary, // dark grey / near-black
   },
   cameraFab: {
     width: spacing.avatarSize,

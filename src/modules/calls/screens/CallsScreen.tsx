@@ -17,10 +17,26 @@ import type { CallLog } from '../../../data/dummyCalls';
 
 export const CallsScreen: React.FC = () => {
   const quickActions = [
-    { id: '1', icon: '☎', label: 'Call' },
-    { id: '2', icon: '📅', label: 'Schedule' },
-    { id: '3', icon: '#️⃣', label: 'Keypad' },
-    { id: '4', icon: '⭐', label: 'Favorites' },
+    {
+      id: 'call',
+      label: 'Call',
+      icon: require('../../../assets/icons/whatsapp-calls.png'),
+    },
+    {
+      id: 'schedule',
+      label: 'Schedule',
+      icon: require('../../../assets/icons/schedule.png'),
+    },
+    {
+      id: 'keypad',
+      label: 'Keypad',
+      icon: require('../../../assets/icons/keypad.png'),
+    },
+    {
+      id: 'favourite',
+      label: 'Favorites',
+      icon: require('../../../assets/icons/favourite.png'),
+    },
   ];
 
   const handleCallPress = (callId: string) => {
@@ -91,7 +107,11 @@ export const CallsScreen: React.FC = () => {
               activeOpacity={0.7}
             >
               <View style={callsScreenStyles.quickActionIconContainer}>
-                <Text style={callsScreenStyles.quickActionIcon}>{action.icon}</Text>
+                <Image
+                  source={action.icon}
+                  style={callsScreenStyles.quickActionIcon}
+                  resizeMode="contain"
+                />
               </View>
               <Text style={callsScreenStyles.quickActionLabel}>{action.label}</Text>
             </TouchableOpacity>
@@ -129,10 +149,11 @@ export const CallsScreen: React.FC = () => {
         onPress={handleNewCall}
         activeOpacity={0.8}
       >
-        <View style={callsScreenStyles.fabContent}>
-          <Text style={callsScreenStyles.fabIcon}>☎</Text>
-          <Text style={callsScreenStyles.fabPlus}>+</Text>
-        </View>
+        <Image
+          source={require('../../../assets/icons/new-call.png')}
+          style={callsScreenStyles.fabIconImage}
+          resizeMode="contain"
+        />
       </TouchableOpacity>
     </SafeAreaView>
   );

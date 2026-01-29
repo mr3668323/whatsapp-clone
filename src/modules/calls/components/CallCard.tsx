@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, Image } from 'react-native';
 import { callCardStyles } from '../styles/CallCard.styles';
 import { colors } from '../../../styles/colors';
 import type { CallLog } from '../../../data/dummyCalls';
@@ -17,19 +17,6 @@ export const CallCard: React.FC<CallCardProps> = ({
   onVideoPress,
   onAudioPress 
 }) => {
-  const getCallIcon = (type: string) => {
-    switch (type) {
-      case 'incoming':
-        return '↓'; // Incoming arrow
-      case 'outgoing':
-        return '↑'; // Outgoing arrow
-      case 'missed':
-        return '↓'; // Missed also uses down arrow (red)
-      default:
-        return '☎';
-    }
-  };
-
   const getCallColor = (type: string) => {
     switch (type) {
       case 'incoming':
@@ -52,7 +39,7 @@ export const CallCard: React.FC<CallCardProps> = ({
       {/* Avatar */}
       <View style={callCardStyles.avatarContainer}>
         <Text style={callCardStyles.avatarText}>
-          {call.name.charAt(0)}
+          {call.name.charAt(0).toUpperCase()}
         </Text>
       </View>
 
@@ -62,9 +49,12 @@ export const CallCard: React.FC<CallCardProps> = ({
           {call.name}
         </Text>
         <View style={callCardStyles.callInfo}>
-          <Text style={[callCardStyles.callTypeIcon, { color: getCallColor(call.type) }]}>
-            {getCallIcon(call.type)}
-          </Text>
+          <View
+            style={[
+              callCardStyles.callTypeIconBullet,
+              { backgroundColor: getCallColor(call.type) },
+            ]}
+          />
           <Text style={[callCardStyles.callTypeText, { color: getCallColor(call.type) }]}>
             {call.time}
           </Text>
@@ -79,7 +69,11 @@ export const CallCard: React.FC<CallCardProps> = ({
             onPress={onVideoPress}
             activeOpacity={0.7}
           >
-            <Text style={callCardStyles.videoIcon}>📹</Text>
+            <Image
+              source={require('../../../assets/icons/video-call.png')}
+              style={callCardStyles.videoIcon}
+              resizeMode="contain"
+            />
           </TouchableOpacity>
         )}
         <TouchableOpacity
@@ -87,7 +81,11 @@ export const CallCard: React.FC<CallCardProps> = ({
           onPress={onAudioPress}
           activeOpacity={0.7}
         >
-          <Text style={callCardStyles.audioIcon}>☎</Text>
+          <Image
+            source={require('../../../assets/icons/whatsapp-calls.png')}
+            style={callCardStyles.audioIcon}
+            resizeMode="contain"
+          />
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
