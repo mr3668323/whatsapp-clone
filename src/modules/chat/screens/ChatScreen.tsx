@@ -10,6 +10,7 @@ import {
     KeyboardAvoidingView,
     Platform,
     Alert,
+    Image,
 } from 'react-native';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
@@ -172,159 +173,9 @@ export const ChatScreen = () => {
     const [userName, setUserName] = useState<string>('');
     // Menu visibility
     const [menuVisible, setMenuVisible] = useState(false);
-    
-    // WhatsApp-style scroll control
-    const flatListRef = useRef<FlatList<any>>(null);
-    const isAtBottomRef = useRef<boolean>(true); // Use ref to avoid stale closures
-    const lastMessageCountRef = useRef<number>(0);
-    const lastMessageSenderIdRef = useRef<string | null>(null); // Track last message sender
 
-    // Removed formatDate - using formatDateSeparator from dateUtils instead
-
-    /* ==================== WHATSAPP-STYLE AUTO-SCROLL ==================== */
-    // Scroll to bottom when messages change, ONLY if user is at bottom
-    useEffect(() => {
-        if (messages.length === 0 || !currentUserUid) {
-            lastMessageCountRef.current = 0;
-            lastMessageSenderIdRef.current = null;
-            return;
-        }
-
-        const messageCountIncreased = messages.length > lastMessageCountRef.current;
-        const lastMessage = messages[messages.length - 1];
-        const lastMessageSenderId = lastMessage?.senderId || null;
-        const lastMessageId = lastMessage?.id || null;
-        const wasAtBottom = isAtBottomRef.current;
-        const previousCount = lastMessageCountRef.current;
-        const previousSenderId = lastMessageSenderIdRef.current;
-        const isIncoming = lastMessageSenderId && lastMessageSenderId !== currentUserUid;
-        const isNewIncomingMessage = isIncoming && (lastMessageId !== previousSenderId || messageCountIncreased);
-
-        // Update refs AFTER checking conditions (but before scrolling)
-        lastMessageCountRef.current = messages.length;
-        lastMessageSenderIdRef.current = lastMessageId; // Store message ID to detect new messages
-
-        // Auto-scroll conditions (WhatsApp behavior):
-        // 1. Message count increased (new message added - incoming OR outgoing)
-        // 2. User was at bottom before the update (or this is the first load)
-        // 3. CRITICAL: For incoming messages, be very aggressive - always scroll unless user explicitly scrolled up
-        if (messageCountIncreased && flatListRef.current) {
-            // For incoming messages: always scroll unless user has explicitly scrolled up (wasAtBottom === false)
-            // For outgoing messages: scroll if user was at bottom
-            // Default: if previousCount === 0 (first load), always scroll
-            const shouldAutoScroll = previousCount === 0 || 
-                                    wasAtBottom || 
-                                    (isIncoming && wasAtBottom !== false); // Incoming: scroll unless explicitly false
-            
-            if (shouldAutoScroll) {
-                console.log('[ChatScreen] ✅ Auto-scrolling: incoming=', isIncoming, 
-                    'wasAtBottom=', wasAtBottom, 'previousCount=', previousCount, 
-                    'newCount=', messages.length, 'senderId=', lastMessageSenderId, 'messageId=', lastMessageId);
-                
-                // Use requestAnimationFrame for better timing with React Native's render cycle
-                requestAnimationFrame(() => {
-                    setTimeout(() => {
-                        if (flatListRef.current) {
-                            // Always scroll if user was at bottom before (they might not have scrolled during delay)
-                            // This ensures incoming messages are visible
-                            try {
-                                flatListRef.current.scrollToEnd({ animated: true });
-                                isAtBottomRef.current = true; // Ensure ref stays true after scroll
-                                console.log('[ChatScreen] ✅ Scrolled to end successfully');
-                            } catch (error) {
-                                console.log('[ChatScreen] scrollToEnd failed, trying scrollToIndex:', error);
-                                // Fallback: scroll to last index
-                                try {
-                                    flatListRef.current.scrollToIndex({ 
-                                        index: messages.length - 1, 
-                                        animated: true,
-                                        viewPosition: 1 // Ensure it's at the bottom
-                                    });
-                                    isAtBottomRef.current = true;
-                                    console.log('[ChatScreen] ✅ Scrolled to index successfully');
-                                } catch (e) {
-                                    console.log('[ChatScreen] scrollToIndex failed, trying scrollToEnd (no animation):', e);
-                                    // Final fallback: scroll without animation
-                                    try {
-                                        flatListRef.current.scrollToEnd({ animated: false });
-                                        isAtBottomRef.current = true;
-                                        console.log('[ChatScreen] ✅ Scrolled to end (no animation)');
-                                    } catch (finalError) {
-                                        console.error('[ChatScreen] ❌ All scroll methods failed:', finalError);
-                                    }
-                                }
-                            }
-                        }
-                    }, 300); // Increased delay for better reliability with Firestore updates
-                });
-            } else {
-                console.log('[ChatScreen] ❌ NOT auto-scrolling: user scrolled up, wasAtBottom=', wasAtBottom, 
-                    'isIncoming=', isIncoming, 'previousCount=', previousCount);
-            }
-        } else if (messageCountIncreased) {
-            console.log('[ChatScreen] ⚠️ Message count increased but flatListRef is null');
-        } else {
-            // Log when effect runs but no scroll happens
-            console.log('[ChatScreen] ℹ️ Effect ran: messageCountIncreased=', messageCountIncreased, 
-                'messages.length=', messages.length, 'lastMessageCountRef=', lastMessageCountRef.current);
-        }
-    }, [messages, currentUserUid]); // Watch messages array to detect new messages
-
-    // Scroll to bottom on initial mount and ensure isAtBottomRef is set
-    useEffect(() => {
-        // Reset to true when chat changes (user opens a new chat)
-        // This ensures that when user opens a chat, they start at bottom
-        isAtBottomRef.current = true;
-        lastMessageCountRef.current = 0;
-        lastMessageSenderIdRef.current = null;
-        
-        if (messages.length > 0) {
-            setTimeout(() => {
-                if (flatListRef.current) {
-                    try {
-                        flatListRef.current.scrollToEnd({ animated: false });
-                        isAtBottomRef.current = true;
-                        console.log('[ChatScreen] Initial scroll to bottom completed');
-                    } catch (error) {
-                        try {
-                            flatListRef.current.scrollToIndex({ 
-                                index: messages.length - 1, 
-                                animated: false 
-                            });
-                            isAtBottomRef.current = true;
-                        } catch (e) {
-                            // Ignore
-                        }
-                    }
-                }
-            }, 400);
-        }
-    }, [chatId]); // Only when chat changes
-
-    // Track scroll position to detect if user is at bottom
-    const handleScroll = (event: any) => {
-        const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
-        
-        // Calculate distance from bottom
-        const scrollOffset = contentOffset.y;
-        const contentHeight = contentSize.height;
-        const viewportHeight = layoutMeasurement.height;
-        const distanceFromBottom = contentHeight - (scrollOffset + viewportHeight);
-        
-        // User is at bottom if within 100px threshold (WhatsApp-like precision)
-        // Increased threshold to be more forgiving - user might be slightly above but still want to see new messages
-        const atBottom = distanceFromBottom < 100;
-        
-        // Only update if it changed (to avoid unnecessary re-renders)
-        if (isAtBottomRef.current !== atBottom) {
-            isAtBottomRef.current = atBottom;
-            if (!atBottom) {
-                console.log('[ChatScreen] User scrolled up, distanceFromBottom=', Math.round(distanceFromBottom));
-            } else {
-                console.log('[ChatScreen] User scrolled back to bottom');
-            }
-        }
-    };
+    // Removed manual scroll management – inverted FlatList + maintainVisibleContentPosition
+    // will handle WhatsApp-like behavior (pinned to bottom when at bottom, no jump when scrolled up).
 
     /* ==================== LOAD USER NAME FOR META AI ==================== */
     useEffect(() => {
@@ -496,8 +347,6 @@ export const ChatScreen = () => {
                     ...doc.data(),
                 }));
                 console.log('[ChatScreen] Messages loaded:', msgs.length, 'messages');
-                // CRITICAL: Don't update lastMessageCountRef here - let the effect detect the change
-                // This ensures auto-scroll triggers when new messages arrive
                 setMessages(msgs);
             }, error => {
                 console.error('[ChatScreen] Error loading messages:', error);
@@ -671,11 +520,6 @@ export const ChatScreen = () => {
             // Note: We could add optimistic message, but it causes tick flickering
             // when Firestore overwrites it. Better to wait for Firestore.
             
-            // Always scroll to bottom when user sends a message
-            // Set ref to true immediately so the effect knows to scroll
-            isAtBottomRef.current = true;
-            // Scroll will happen automatically when Firestore updates messages
-
             // Call backend API - backend will save both user message and AI response to Firestore
             try {
                 console.log('[ChatScreen] Calling Meta AI backend API...');
@@ -777,32 +621,8 @@ export const ChatScreen = () => {
         }
 
         await chatRoomRef.update(updateData);
-        
-        // Always scroll to bottom when user sends a message (normal chat)
-        // Set ref to true immediately so the effect knows to scroll
-        isAtBottomRef.current = true;
-        requestAnimationFrame(() => {
-            setTimeout(() => {
-                if (flatListRef.current) {
-                    try {
-                        flatListRef.current.scrollToEnd({ animated: true });
-                        isAtBottomRef.current = true;
-                    } catch (error) {
-                        try {
-                            const currentLength = messages.length + 1;
-                            flatListRef.current.scrollToIndex({ 
-                                index: currentLength - 1, 
-                                animated: true,
-                                viewPosition: 1
-                            });
-                            isAtBottomRef.current = true;
-                        } catch (e) {
-                            // Ignore
-                        }
-                    }
-                }
-            }, 150);
-        });
+        // Inverted FlatList will keep view pinned to bottom when user is already there
+        // so no manual scroll is needed here.
     }, [text, chatId, currentUserUid, isMetaAIChat, messages]);
 
     /* ==================== DELETE CHAT ==================== */
@@ -953,6 +773,16 @@ export const ChatScreen = () => {
     // Using formatMessageTime from dateUtils - shows only time (hh:mm AM/PM)
 
     /* ==================== RENDER MESSAGE ==================== */
+    // Ensure messages are sorted by createdAt (chronological) before rendering
+    const chronologicalMessages = [...messages].sort((a, b) => {
+        const aDate = timestampToDate(a.createdAt)?.getTime() ?? 0;
+        const bDate = timestampToDate(b.createdAt)?.getTime() ?? 0;
+        return aDate - bDate;
+    });
+
+    // For inverted FlatList we render newest first
+    const messagesForList = chronologicalMessages.slice().reverse();
+
     const renderMessage = ({ item, index }: any) => {
         const isMe = item.senderId === currentUserUid;
         // Use formatMessageTime - shows only time (hh:mm AM/PM), no date
@@ -966,7 +796,7 @@ export const ChatScreen = () => {
                 return true;
             }
             
-            const prevMessage = messages[index - 1];
+            const prevMessage = messagesForList[index - 1];
             if (!prevMessage || !prevMessage.createdAt || !item.createdAt) {
                 return false;
             }
@@ -983,10 +813,12 @@ export const ChatScreen = () => {
             return !isSameDay(prevDate, currentDate);
         })();
         
-        // Get date separator label if needed
-        const dateSeparatorLabel = showDateSeparator 
-            ? formatDateSeparator(timestampToDate(item.createdAt) || new Date())
-            : null;
+        // Get date separator label if needed – STRICTLY from Firestore timestamp
+        const messageDate = timestampToDate(item.createdAt);
+        const dateSeparatorLabel =
+            showDateSeparator && messageDate
+                ? formatDateSeparator(messageDate)
+                : null;
 
         return (
             <View>
@@ -1091,7 +923,11 @@ export const ChatScreen = () => {
                     style={chatScreenStyles.backButton}
                     onPress={() => navigation.goBack()}
                 >
-                    <Text style={chatScreenStyles.backIcon}>←</Text>
+                    <Image
+                        source={require('../../../assets/icons/back.png')}
+                        style={chatScreenStyles.backIcon}
+                        resizeMode="contain"
+                    />
                 </TouchableOpacity>
                 
                 <View style={chatScreenStyles.avatarContainer}>
@@ -1175,21 +1011,12 @@ export const ChatScreen = () => {
                 </View>
             </View>
 
-            {/* Encryption Banner - At Top (hide for Meta AI) */}
-            {!isMetaAIChat && (
-                <View style={chatScreenStyles.encryptionBanner}>
-                    <Text style={chatScreenStyles.encryptionIcon}>🔒</Text>
-                    <Text style={chatScreenStyles.encryptionText}>
-                        Messages and calls are end-to-end encrypted. Only people in this chat can read, listen to, or share them. Learn more.
-                    </Text>
-                </View>
-            )}
-
-            {/* Messages with Background */}
+            {/* Messages with Background (wallpaper edge-to-edge) */}
             <ImageBackground
                 source={require('../../../assets/images/Wchat-background.jpg')}
                 style={chatScreenStyles.backgroundImage}
-                imageStyle={{ opacity: 0.4 }}
+                // Very light wallpaper so icons are subtle, like WhatsApp
+                imageStyle={{ opacity: 0.15 }}
                 resizeMode="cover"
             >
                 {isMetaAIChat && messages.length === 0 ? (
@@ -1202,26 +1029,36 @@ export const ChatScreen = () => {
                     />
                 ) : (
                     <FlatList
-                        ref={flatListRef}
-                        data={messages}
+                        data={messagesForList}
                         keyExtractor={item => item.id}
                         renderItem={renderMessage}
                         contentContainerStyle={chatScreenStyles.messageList}
-                        inverted={false}
+                        inverted
                         showsVerticalScrollIndicator={false}
-                        onScroll={handleScroll}
-                        scrollEventThrottle={16}
-                        ListHeaderComponent={
-                            isMetaAIChat && messages.length > 0 ? (
-                                <View style={{ paddingVertical: spacing.sm }}>
-                                    <View style={chatScreenStyles.systemMessage}>
-                                        <Text style={chatScreenStyles.systemMessageText}>
-                                            Messages are generated by AI. Some may be inaccurate or inappropriate. Learn more.
+                        ListFooterComponent={() => (
+                            <>
+                                {/* Encryption banner: one-time header at top of chat (non Meta AI) */}
+                                {!isMetaAIChat && (
+                                    <View style={chatScreenStyles.encryptionBanner}>
+                                        <Text style={chatScreenStyles.encryptionIcon}>🔒</Text>
+                                        <Text style={chatScreenStyles.encryptionText}>
+                                            Messages and calls are end-to-end encrypted. Only people in this chat can read, listen to, or share them. Learn more.
                                         </Text>
                                     </View>
-                                </View>
-                            ) : null
-                        }
+                                )}
+
+                                {/* Meta AI system disclaimer (only for Meta AI chats with messages) */}
+                                {isMetaAIChat && messages.length > 0 && (
+                                    <View style={{ paddingVertical: spacing.sm }}>
+                                        <View style={chatScreenStyles.systemMessage}>
+                                            <Text style={chatScreenStyles.systemMessageText}>
+                                                Messages are generated by AI. Some may be inaccurate or inappropriate. Learn more.
+                                            </Text>
+                                        </View>
+                                    </View>
+                                )}
+                            </>
+                        )}
                     />
                 )}
             </ImageBackground>
@@ -1283,7 +1120,11 @@ export const ChatScreen = () => {
                                 <Text style={chatScreenStyles.attachIcon}>📎</Text>
                             </TouchableOpacity>
                             <TouchableOpacity style={chatScreenStyles.cameraButton}>
-                                <Text style={chatScreenStyles.cameraIcon}>📷</Text>
+                                <Image
+                                    source={require('../../../assets/icons/whatsapp-camera.png')}
+                                    style={chatScreenStyles.cameraIcon}
+                                    resizeMode="contain"
+                                />
                             </TouchableOpacity>
                             <TouchableOpacity style={chatScreenStyles.micButton}>
                                 <Text style={chatScreenStyles.micIcon}>🎤</Text>

@@ -21,21 +21,27 @@ export const DateSeparator: React.FC<DateSeparatorProps> = ({ label }) => {
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    marginVertical: spacing.sm,
+    marginVertical: spacing.md,
     paddingHorizontal: spacing.md,
   },
   chip: {
-    backgroundColor: colors.dateSeparatorBackground || 'rgba(0, 0, 0, 0.08)',
-    borderRadius: 8, // Pill shape (more rounded)
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
     paddingVertical: spacing.xs,
+    borderRadius: spacing.xl,            // pill shape
+    backgroundColor: colors.white,       // pure white, no opacity
+    borderWidth: 1,
+    borderColor: colors.border,          // subtle outline
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 1,
     minWidth: 80,
     alignItems: 'center',
   },
   label: {
     fontSize: typography.fontSize.xs,
-    fontFamily: typography.fontFamily.regular,
-    color: colors.textSecondary || colors.textPrimary,
-    fontWeight: typography.fontWeight.medium,
+    fontFamily: typography.fontFamily.medium,
+    color: colors.textPrimary,           // stronger contrast like WhatsApp
   },
 });

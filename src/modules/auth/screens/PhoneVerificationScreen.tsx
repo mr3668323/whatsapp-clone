@@ -9,6 +9,7 @@ import {
   SafeAreaView,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import { phoneVerificationStyles } from '../styles/PhoneVerification.styles';
 import { Country } from '../../../data/countries';
@@ -102,7 +103,11 @@ export const PhoneVerificationScreen: React.FC<PhoneVerificationScreenProps> = (
           style={phoneVerificationStyles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Text style={phoneVerificationStyles.backIcon}>←</Text>
+          <Image
+            source={require('../../../assets/icons/back.png')}
+            style={phoneVerificationStyles.backIcon}
+            resizeMode="contain"
+          />
         </TouchableOpacity>
         
         <Text style={phoneVerificationStyles.headerTitle}>Phone Verification</Text>

@@ -382,9 +382,9 @@ export const updatesScreenStyles = StyleSheet.create({
     elevation: 4,
   },
   cameraIcon: {
-    fontSize: typography.fontSize.xl,
-    fontFamily: typography.fontFamily.regular,
-    color: colors.white,
+    width: typography.fontSize.lg * 1.8,
+    height: typography.fontSize.lg * 1.8,
+    tintColor: colors.white,
   },
   
   // Search Results Styles
@@ -430,9 +430,9 @@ export const updatesScreenStyles = StyleSheet.create({
     marginRight: spacing.md,
   },
   backIcon: {
-    fontSize: typography.fontSize.xl,
-    fontFamily: typography.fontFamily.regular,
-    color: colors.textPrimary,
+    width: spacing.lg * 1.2,
+    height: spacing.lg * 1.2,
+    tintColor: colors.textPrimary,
   },
   settingsTitle: {
     fontSize: typography.fontSize.lg,

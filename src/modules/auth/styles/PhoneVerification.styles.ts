@@ -21,10 +21,9 @@ export const phoneVerificationStyles = StyleSheet.create({
   backButton: {
   },
   backIcon: {
-    fontSize: typography.fontSize["3xl"] + spacing.xs,
-    fontFamily: typography.fontFamily.bold,
-    color: colors.whatsappTeal,
-    fontWeight: typography.fontWeight.bold,
+    width: spacing.lg * 1.2,
+    height: spacing.lg * 1.2,
+    tintColor: colors.whatsappTeal,
   },
   headerTitle: {
     fontSize: typography.fontSize.lg,

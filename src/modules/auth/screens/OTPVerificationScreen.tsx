@@ -13,6 +13,7 @@ import {
         StatusBar,
         AppState,
         AppStateStatus,
+        Image,
     } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../../types/navigation';
@@ -1004,7 +1005,7 @@ export const OTPVerificationScreen: React.FC<OTPVerificationScreenProps> = ({ ro
                     />
                     
                     <View style={phoneVerificationStyles.header}>
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             style={phoneVerificationStyles.backButton}
                             onPress={() => {
                                 if (!isVerifying && !otpVerified) {
@@ -1013,7 +1014,11 @@ export const OTPVerificationScreen: React.FC<OTPVerificationScreenProps> = ({ ro
                             }}
                             disabled={isVerifying || otpVerified}
                         >
-                            <Text style={phoneVerificationStyles.backIcon}>←</Text>
+                            <Image
+                                source={require('../../../assets/icons/back.png')}
+                                style={phoneVerificationStyles.backIcon}
+                                resizeMode="contain"
+                            />
                         </TouchableOpacity>
                         
                         <Text style={phoneVerificationStyles.headerTitle}>Verify your phone number</Text>

@@ -145,9 +145,9 @@ export const ProfileScreen: React.FC = () => {
       padding: spacing.xs,
     },
     backIcon: {
-      fontSize: typography.fontSize.xl,
-      fontFamily: typography.fontFamily.regular,
-      color: colors.whatsappTeal,
+      width: spacing.lg * 1.2,
+      height: spacing.lg * 1.2,
+      tintColor: colors.whatsappTeal,
     },
     headerTitle: {
       fontSize: typography.fontSize.xl,
@@ -243,7 +243,11 @@ export const ProfileScreen: React.FC = () => {
       <SafeAreaView style={profileScreenStyles.container}>
         <View style={profileScreenStyles.header}>
           <TouchableOpacity onPress={handleBackPress} style={profileScreenStyles.backButton}>
-            <Text style={profileScreenStyles.backIcon}>←</Text>
+            <Image
+              source={require('../../../assets/icons/back.png')}
+              style={profileScreenStyles.backIcon}
+              resizeMode="contain"
+            />
           </TouchableOpacity>
           <Text style={profileScreenStyles.headerTitle}>Profile</Text>
         </View>
@@ -259,7 +263,11 @@ export const ProfileScreen: React.FC = () => {
       {/* Header */}
       <View style={profileScreenStyles.header}>
         <TouchableOpacity onPress={handleBackPress} style={profileScreenStyles.backButton}>
-          <Text style={profileScreenStyles.backIcon}>←</Text>
+          <Image
+            source={require('../../../assets/icons/back.png')}
+            style={profileScreenStyles.backIcon}
+            resizeMode="contain"
+          />
         </TouchableOpacity>
         <Text style={profileScreenStyles.headerTitle}>Profile</Text>
       </View>

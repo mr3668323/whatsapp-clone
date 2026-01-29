@@ -23,9 +23,9 @@ export const settingsScreenStyles = StyleSheet.create({
     padding: spacing.xs,
   },
   backIcon: {
-    fontSize: typography.fontSize.xl,
-    fontFamily: typography.fontFamily.regular,
-    color: colors.whatsappTeal,
+    width: spacing.lg * 1.2,
+    height: spacing.lg * 1.2,
+    tintColor: colors.whatsappTeal,
   },
   headerTitle: {
     fontSize: typography.fontSize.xl,

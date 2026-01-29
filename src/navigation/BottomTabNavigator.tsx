@@ -1,6 +1,6 @@
 import type React from "react"
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs"
-import { View, Text } from "react-native"
+import { View, Text, Image } from "react-native"
 import { HomeScreen } from "../modules/home/screens/HomeScreen"
 import { UpdatesScreen } from "../modules/updates/screens/UpdatesScreen"
 import { CallsScreen } from "../modules/calls/screens/CallsScreen"
@@ -17,22 +17,36 @@ interface TabIconProps {
 }
 
 const TabIcon: React.FC<TabIconProps> = ({ name, focused }) => {
-    const iconMap: { [key: string]: string } = {
-        Updates: "📱",
-        Calls: "☎️",
-        Communities: "👥",
-        Chats: "💬",
-    }
-
     return (
         <View style={bottomTabNavigatorStyles.tabIconContainer}>
-            <Text style={bottomTabNavigatorStyles.tabIconEmoji}>{iconMap[name] || "📱"}</Text>
+            <View
+                style={[
+                    bottomTabNavigatorStyles.tabIconWrapper,
+                    {
+                        backgroundColor: focused ? colors.bubbleSent : 'transparent',
+                    },
+                ]}
+            >
+                <Image
+                    source={
+                        name === "Chats"
+                            ? require("../assets/icons/whatsapp-chat.png")
+                            : name === "Updates"
+                            ? require("../assets/icons/whatsapp-updates.png")
+                            : name === "Communities"
+                            ? require("../assets/icons/whatsapp-communities.png")
+                            : require("../assets/icons/whatsapp-calls.png")
+                    }
+                    style={bottomTabNavigatorStyles.tabIconEmoji}
+                    resizeMode="contain"
+                />
+            </View>
             <Text
                 style={[
                     bottomTabNavigatorStyles.tabLabel,
                     focused ? bottomTabNavigatorStyles.tabLabelFocused : bottomTabNavigatorStyles.tabLabelUnfocused,
                     {
-                        color: focused ? colors.buttonPrimary : colors.textTertiary,
+                        color: focused ? colors.textPrimary : colors.textTertiary,
                     },
                 ]}
             >

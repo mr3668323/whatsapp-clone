@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   Text,
   View,
+  Image,
 } from 'react-native';
 import { settingsScreenStyles } from '../styles/SettingsScreen.styles';
 import { SettingsItem } from '../components/SettingsItem';
@@ -71,7 +72,11 @@ export const SettingsScreen: React.FC = () => {
       {/* Header */}
       <View style={settingsScreenStyles.header}>
         <TouchableOpacity onPress={handleBackPress} style={settingsScreenStyles.backButton}>
-          <Text style={settingsScreenStyles.backIcon}>←</Text>
+          <Image
+            source={require('../../../assets/icons/back.png')}
+            style={settingsScreenStyles.backIcon}
+            resizeMode="contain"
+          />
         </TouchableOpacity>
         
         <Text style={settingsScreenStyles.headerTitle}>Settings</Text>

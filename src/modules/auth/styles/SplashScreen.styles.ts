@@ -15,14 +15,18 @@ export const splashScreenStyles = StyleSheet.create({
   },
   logoContainer: {
     alignItems: "center",
-    marginBottom: spacing["4xl"],
+    // Slightly less bottom margin so logo sits closer to true center,
+    // matching the official WhatsApp splash balance
+    marginBottom: spacing["3xl"],
   },
   
   // WhatsApp Logo Image Style
   whatsappLogoImage: {
-    width: 100,
-    height: 100,
-    marginBottom: spacing.xl,
+    // Slightly smaller than before to match the official logo proportion
+    width: 84,
+    height: 84,
+    // Very subtle spacing below logo before the footer block
+    marginBottom: spacing.lg,
   },
   
   // WhatsApp Text Style - WhatsApp teal
@@ -36,13 +40,15 @@ export const splashScreenStyles = StyleSheet.create({
   
   footer: {
     position: "absolute",
-    bottom: spacing["3xl"] + spacing.lg, // 60px from bottom
+    // Bring the footer slightly closer to the bottom like the real app
+    bottom: spacing["2xl"] + spacing.md,
     alignItems: "center",
   },
   
   // "from" text - light gray
   footerText: {
-    fontSize: typography.fontSize.base,
+    // Keep "from" smaller and lighter than Meta text
+    fontSize: typography.fontSize.sm,
     fontFamily: typography.fontFamily.regular,
     color: colors.textTertiary, // Light gray (#8696A0)
     marginBottom: spacing.xxs,
@@ -57,7 +63,8 @@ export const splashScreenStyles = StyleSheet.create({
   
   // Meta Icon (∞ symbol) - WhatsApp teal
   metaIcon: {
-    fontSize: typography.fontSize.lg, // Slightly smaller than text
+    // Make icon clearly visible and slightly larger
+    fontSize: typography.fontSize["2xl"],
     fontFamily: typography.fontFamily.medium,
     color: colors.whatsappTeal, // WhatsApp teal (#008069) - CORRECTED
     fontWeight: typography.fontWeight.medium,
@@ -66,7 +73,8 @@ export const splashScreenStyles = StyleSheet.create({
   
   // Meta Text - WhatsApp teal
   metaText: {
-    fontSize: typography.fontSize.xl,
+    // Slightly larger and bold to match official Meta wordmark weight
+    fontSize: typography.fontSize["2xl"],
     fontFamily: typography.fontFamily.bold,
     fontWeight: typography.fontWeight.bold, // Bold
     color: colors.whatsappTeal, // WhatsApp teal (#008069) - CORRECTED

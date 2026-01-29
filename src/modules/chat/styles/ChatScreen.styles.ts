@@ -7,7 +7,8 @@ export const chatScreenStyles = StyleSheet.create({
   /* -------------------- Container -------------------- */
   container: {
     flex: 1,
-    backgroundColor: colors.white,
+    // Warm WhatsApp-style chat background (light cream)
+    backgroundColor: colors.chatBackgroundLight,
   },
 
   /* -------------------- Header -------------------- */
@@ -25,9 +26,9 @@ export const chatScreenStyles = StyleSheet.create({
     marginRight: spacing.xs,
   },
   backIcon: {
-    fontSize: typography.fontSize.xl,
-    color: colors.textPrimary, // Black text
-    fontFamily: typography.fontFamily.regular,
+    width: spacing.lg * 1.2,
+    height: spacing.lg * 1.2,
+    tintColor: colors.textPrimary,
   },
   avatarContainer: {
     marginRight: spacing.sm,
@@ -90,7 +91,8 @@ export const chatScreenStyles = StyleSheet.create({
 
   /* -------------------- Messages List -------------------- */
   messageList: {
-    paddingHorizontal: spacing.base,
+    // Wider side padding so bubbles don’t touch screen edges (WhatsApp-like)
+    paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
   },
 
@@ -216,7 +218,8 @@ export const chatScreenStyles = StyleSheet.create({
     marginLeft: spacing.xs,
   },
   cameraIcon: {
-    fontSize: typography.fontSize.lg,
+    width: typography.fontSize.lg * 1.6,
+    height: typography.fontSize.lg * 1.6,
   },
   micButton: {
     width: spacing.inputHeight,
@@ -249,25 +252,31 @@ export const chatScreenStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.encryptionBanner,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg, // ~16dp horizontal padding
     paddingVertical: spacing.sm,
     gap: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    borderRadius: spacing.md, // Rounded from sides
-    marginHorizontal: spacing.sm,
-    marginTop: spacing.xs,
-    marginBottom: spacing.xs,
+    borderRadius: spacing.lg, // pill-like radius
+    alignSelf: 'center',
+    marginHorizontal: spacing.lg, // inset from edges
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
+    maxWidth: '92%',
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 1,
   },
   encryptionIcon: {
     fontSize: typography.fontSize.base,
+    color: colors.iconGray,
   },
   encryptionText: {
     flex: 1,
     fontSize: typography.fontSize.xs,
     fontFamily: typography.fontFamily.regular,
-    color: colors.textPrimary,
-    lineHeight: typography.lineHeight.normal * typography.fontSize.xs,
+    color: colors.iconGray,
+    lineHeight: typography.lineHeight.normal * typography.fontSize.xs * 1.1,
   },
 
   /* -------------------- Meta AI Specific -------------------- */

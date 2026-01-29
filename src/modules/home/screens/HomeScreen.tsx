@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   TextInput,
   SafeAreaView,
+  Image,
 } from 'react-native';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
@@ -251,6 +252,26 @@ export const HomeScreen = () => {
   useEffect(() => {
     if (!currentUserUid) return;
 
+    // Load cached chat rooms first for instant UI (WhatsApp-like behavior)
+    const cacheKey = `chat_rooms_cache_${currentUserUid}`;
+    AsyncStorage.getItem(cacheKey)
+      .then(stored => {
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              console.log('[HomeScreen] Loaded cached chat rooms from AsyncStorage:', parsed.length);
+              setChatRooms(parsed);
+            }
+          } catch (e) {
+            console.log('[HomeScreen] Failed to parse cached chat rooms:', e);
+          }
+        }
+      })
+      .catch(err => {
+        console.log('[HomeScreen] Error reading cached chat rooms:', err);
+      });
+
     // Remove orderBy to avoid index requirement - we'll sort in memory instead
     const unsubscribe = firestore()
       .collection('chatRooms')
@@ -381,6 +402,11 @@ export const HomeScreen = () => {
         });
         
         setChatRooms(allChats);
+
+        // Update cache so next app launch can show chats instantly from storage
+        AsyncStorage.setItem(cacheKey, JSON.stringify(allChats)).catch(err => {
+          console.log('[HomeScreen] Error caching chat rooms:', err);
+        });
       }, (error: any) => {
         console.error('[HomeScreen] Firestore listener error:', error);
         // If it's an index error, show helpful message
@@ -467,7 +493,11 @@ export const HomeScreen = () => {
         <Text style={homeScreenStyles.headerTitle}>WhatsApp</Text>
         <View style={homeScreenStyles.headerActions}>
           <TouchableOpacity style={homeScreenStyles.headerButton}>
-            <Text style={homeScreenStyles.cameraIcon}>📷</Text>
+            <Image
+              source={require('../../../assets/icons/whatsapp-camera.png')}
+              style={homeScreenStyles.cameraIcon}
+              resizeMode="contain"
+            />
           </TouchableOpacity>
           <TouchableOpacity
             style={homeScreenStyles.headerButton}

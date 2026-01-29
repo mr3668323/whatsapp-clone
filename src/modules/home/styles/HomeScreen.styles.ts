@@ -232,10 +232,11 @@ export const homeScreenStyles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
   },
+  // Header camera icon (image) - size tuned to match WhatsApp header icon
   cameraIcon: {
-    fontSize: typography.fontSize.xl,
-    fontFamily: typography.fontFamily.regular,
-    color: colors.iconGray, // Gray icon on white header
+    width: typography.fontSize.lg * 1.6,
+    height: typography.fontSize.lg * 1.6,
+    tintColor: colors.iconGray, // Gray icon on white header
   },
   moreIcon: {
     fontSize: typography.fontSize.xl,

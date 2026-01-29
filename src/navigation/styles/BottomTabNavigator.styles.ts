@@ -9,8 +9,16 @@ export const bottomTabNavigatorStyles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: spacing.sm,
   },
+  tabIconWrapper: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: spacing.xl, // pill / circle
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
   tabIconEmoji: {
-    fontSize: typography.fontSize.xl,
+    width: typography.fontSize.xl * 1.6,
+    height: typography.fontSize.xl * 1.6,
   },
   tabLabel: {
     fontSize: typography.fontSize.xs,

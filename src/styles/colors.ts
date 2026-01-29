@@ -11,6 +11,8 @@ export const colors = {
   backgroundLight: "#FFFFFF",         // Light backgrounds
   backgroundGray: "#FAF9FE",          // WhatsApp's light gray
   backgroundInput: "#F0F2F5",         // Input background
+  // WhatsApp chat wallpaper base (warm off-white / cream)
+  chatBackgroundLight: "#F7F2EA",
   
   // Text Colors (EXACT from screenshot)
   textPrimary: "#000000",             // Black text
@@ -78,7 +80,8 @@ export const colors = {
   
   // Date Separator (WhatsApp style)
   dateSeparatorBackground: "rgba(0, 0, 0, 0.08)", // Light background for date chip
-  encryptionBanner: "#FFF9C4", // Lighter, less saturated yellow like WhatsApp
+  // WhatsApp encryption banner - warm light yellow
+  encryptionBanner: "#FFF4CC",
   
   // Shadows
   shadow: "rgba(0, 0, 0, 0.1)", 

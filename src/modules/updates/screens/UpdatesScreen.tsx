@@ -10,6 +10,7 @@ import {
   TextInput,
   Animated,
   TouchableWithoutFeedback,
+  Image,
 } from 'react-native';
 import { updatesScreenStyles } from '../styles/UpdatesScreen.styles';
 import { colors } from '../../../styles/colors';
@@ -425,7 +426,11 @@ export const UpdatesScreen: React.FC = () => {
             <Text style={updatesScreenStyles.pencilIcon}>✏️</Text>
           </TouchableOpacity>
           <TouchableOpacity style={updatesScreenStyles.cameraFab}>
-            <Text style={updatesScreenStyles.cameraIcon}>📷</Text>
+            <Image
+              source={require('../../../assets/icons/whatsapp-camera.png')}
+              style={updatesScreenStyles.cameraIcon}
+              resizeMode="contain"
+            />
           </TouchableOpacity>
         </View>
       </SafeAreaView>
