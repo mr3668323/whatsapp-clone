@@ -12,7 +12,7 @@ export const phoneInputStyles = StyleSheet.create({
     backgroundColor: colors.background, // #FFFFFF
     position: 'relative',
     borderBottomWidth: 2, // ADDED: Green underline thickness
-    borderBottomColor: colors.whatsappTeal, // ADDED: Green underline color (#008069)
+    borderBottomColor: colors.whatsappGreen, // WhatsApp bright green underline
     marginHorizontal: spacing.lg, // ADDED: Match other margins
     marginTop: spacing.sm, // ADDED: Spacing from country picker
   },

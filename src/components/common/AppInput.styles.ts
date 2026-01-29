@@ -25,7 +25,7 @@ export const appInputStyles = StyleSheet.create({
     backgroundColor: colors.backgroundInput, // Use WhatsApp input background
   },
   inputFocused: {
-    borderColor: colors.whatsappTeal, // WhatsApp teal for focused state
+    borderColor: colors.whatsappGreen, // WhatsApp bright green for focused state
     borderWidth: 2,
   },
   error: {

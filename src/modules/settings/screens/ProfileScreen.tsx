@@ -147,7 +147,7 @@ export const ProfileScreen: React.FC = () => {
     backIcon: {
       width: spacing.lg * 1.2,
       height: spacing.lg * 1.2,
-      tintColor: colors.whatsappTeal,
+      tintColor: colors.whatsappGreen,
     },
     headerTitle: {
       fontSize: typography.fontSize.xl,
@@ -173,7 +173,7 @@ export const ProfileScreen: React.FC = () => {
       width: spacing.avatarSize * 2,
       height: spacing.avatarSize * 2,
       borderRadius: spacing.avatarSize,
-      backgroundColor: colors.whatsappTeal,
+      backgroundColor: colors.whatsappGreen,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
       marginBottom: spacing.md,
@@ -186,7 +186,7 @@ export const ProfileScreen: React.FC = () => {
     editText: {
       fontSize: typography.fontSize.base,
       fontFamily: typography.fontFamily.regular,
-      color: colors.whatsappTeal,
+      color: colors.whatsappGreen,
     },
     profileItem: {
       flexDirection: 'row' as const,
@@ -228,7 +228,7 @@ export const ProfileScreen: React.FC = () => {
     profileItemValueLink: {
       fontSize: typography.fontSize.base,
       fontFamily: typography.fontFamily.regular,
-      color: colors.whatsappTeal,
+      color: colors.whatsappGreen,
     },
     loadingContainer: {
       flex: 1,
@@ -252,7 +252,7 @@ export const ProfileScreen: React.FC = () => {
           <Text style={profileScreenStyles.headerTitle}>Profile</Text>
         </View>
         <View style={profileScreenStyles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.whatsappTeal} />
+          <ActivityIndicator size="large" color={colors.whatsappGreen} />
         </View>
       </SafeAreaView>
     );

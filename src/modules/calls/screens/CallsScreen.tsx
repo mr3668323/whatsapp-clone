@@ -7,6 +7,7 @@ import {
   ScrollView,
   FlatList,
   StatusBar,
+  Image,
 } from 'react-native';
 import { callsScreenStyles } from '../styles/CallsScreen.styles';
 import { CallCard } from '../components/CallCard';
@@ -63,10 +64,18 @@ export const CallsScreen: React.FC = () => {
         <Text style={callsScreenStyles.headerTitle}>Calls</Text>
         <View style={callsScreenStyles.headerActions}>
           <TouchableOpacity style={callsScreenStyles.headerButton}>
-            <Text style={callsScreenStyles.searchIcon}>🔍</Text>
+            <Image
+              source={require('../../../assets/icons/search.png')}
+              style={callsScreenStyles.searchIcon}
+              resizeMode="contain"
+            />
           </TouchableOpacity>
           <TouchableOpacity style={callsScreenStyles.headerButton}>
-            <Text style={callsScreenStyles.menuIcon}>⋮</Text>
+            <Image
+              source={require('../../../assets/icons/menu-bar.png')}
+              style={callsScreenStyles.menuIcon}
+              resizeMode="contain"
+            />
           </TouchableOpacity>
         </View>
       </View>

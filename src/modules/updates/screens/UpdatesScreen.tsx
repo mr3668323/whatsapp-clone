@@ -217,14 +217,22 @@ export const UpdatesScreen: React.FC = () => {
               style={updatesScreenStyles.headerIconButton}
               onPress={enterSearchMode}
             >
-              <Text style={updatesScreenStyles.searchIcon}>🔍</Text>
+              <Image
+                source={require('../../../assets/icons/search.png')}
+                style={updatesScreenStyles.searchIcon}
+                resizeMode="contain"
+              />
             </TouchableOpacity>
           )}
           <TouchableOpacity
             style={updatesScreenStyles.headerIconButton}
             onPress={toggleDropdown}
           >
-            <Text style={updatesScreenStyles.moreIcon}>⋮</Text>
+            <Image
+              source={require('../../../assets/icons/menu-bar.png')}
+              style={updatesScreenStyles.moreIcon}
+              resizeMode="contain"
+            />
           </TouchableOpacity>
         </View>
       </View>

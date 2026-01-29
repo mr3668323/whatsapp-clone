@@ -28,9 +28,9 @@ export const communitiesScreenStyles = StyleSheet.create({
     padding: spacing.xs,
   },
   menuIcon: {
-    fontSize: typography.fontSize["2xl"],
-    fontFamily: typography.fontFamily.regular,
-    color: colors.iconGray,
+    width: typography.fontSize.lg * 1.3,
+    height: typography.fontSize.lg * 1.3,
+    tintColor: colors.textPrimary,
   },
   infoSection: {
     paddingHorizontal: spacing.lg,
@@ -61,7 +61,7 @@ export const communitiesScreenStyles = StyleSheet.create({
     width: spacing.avatarSize,
     height: spacing.avatarSize,
     borderRadius: spacing.avatarSize / 2,
-    backgroundColor: colors.whatsappTeal,
+    backgroundColor: colors.whatsappGreen,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,

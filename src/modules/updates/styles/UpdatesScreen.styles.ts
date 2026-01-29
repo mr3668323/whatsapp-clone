@@ -42,14 +42,14 @@ export const updatesScreenStyles = StyleSheet.create({
     padding: spacing.xs,
   },
   searchIcon: {
-    fontSize: typography.fontSize.xl,
-    fontFamily: typography.fontFamily.regular,
-    color: colors.iconGray,
+    width: typography.fontSize.lg * 1.6,
+    height: typography.fontSize.lg * 1.6,
+    tintColor: colors.textPrimary,
   },
   moreIcon: {
-    fontSize: typography.fontSize.xl,
-    fontFamily: typography.fontFamily.regular,
-    color: colors.iconGray,
+    width: typography.fontSize.lg * 1.3,
+    height: typography.fontSize.lg * 1.3,
+    tintColor: colors.textPrimary,
   },
   
   // Search Styles
@@ -181,7 +181,7 @@ export const updatesScreenStyles = StyleSheet.create({
     width: spacing.xl,
     height: spacing.xl,
     borderRadius: spacing.xl / 2,
-    backgroundColor: colors.whatsappTeal,
+    backgroundColor: colors.whatsappGreen,
     borderWidth: spacing.xxs,
     borderColor: colors.white,
     alignItems: 'center',
@@ -204,7 +204,7 @@ export const updatesScreenStyles = StyleSheet.create({
   statusImagePlaceholder: {
     width: '100%',
     height: '100%',
-    backgroundColor: colors.whatsappTeal,
+    backgroundColor: colors.whatsappGreen,
     opacity: 0.3,
   },
   statusProfileAvatar: {
@@ -276,7 +276,7 @@ export const updatesScreenStyles = StyleSheet.create({
     width: spacing.avatarSize,
     height: spacing.avatarSize,
     borderRadius: spacing.avatarSize / 2,
-    backgroundColor: colors.whatsappTeal,
+    backgroundColor: colors.whatsappGreen,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,

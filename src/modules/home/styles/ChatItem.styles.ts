@@ -21,7 +21,7 @@ export const chatItemStyles = StyleSheet.create({
     height: spacing.avatarSize,
     borderRadius: spacing.avatarSize / 2,
     marginRight: spacing.base,
-    backgroundColor: colors.whatsappTeal,
+    backgroundColor: colors.whatsappGreen,
     justifyContent: "center",
     alignItems: "center",
   },

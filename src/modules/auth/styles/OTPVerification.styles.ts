@@ -93,7 +93,7 @@ export const otpVerificationStyles = StyleSheet.create({
     padding: 0,
   },
   otpInputFilled: {
-    borderColor: colors.whatsappTeal,
+    borderColor: colors.whatsappGreen,
     backgroundColor: colors.backgroundLight,
   },
   timerContainer: {

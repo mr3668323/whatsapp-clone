@@ -1,10 +1,10 @@
 // WhatsApp EXACT Colors - Titoo Copy
 export const colors = {
   // WhatsApp Primary Colors (EXACT from app)
-  whatsappGreen: "#25D366",           // WhatsApp green (icon, online status)
-  whatsappTeal: "#008069",            // WhatsApp teal (buttons, links)
-  whatsappDarkTeal: "#075E54",        // Dark teal (old WhatsApp)
-  whatsappLightTeal: "#00A884",       // Light teal (new WhatsApp gradient)
+  whatsappGreen: "#25D366",           // WhatsApp bright vibrant green (PRIMARY - use everywhere)
+  whatsappTeal: "#25D366",            // Alias to bright green for consistency
+  whatsappDarkTeal: "#075E54",        // Dark teal (old WhatsApp - rarely used)
+  whatsappLightTeal: "#25D366",       // Alias to bright green
   
   // Background Colors (EXACT from screenshot - WHITE)
   background: "#FFFFFF",              // WHITE background - CORRECTED
@@ -19,7 +19,7 @@ export const colors = {
   textSecondary: "#6A6A6A",           // Gray text
   textTertiary: "#8696A0",
   textLight: "#FFFFFF",  
-  textLink: "#008069",                  // Link color - CORRECTED
+  textLink: "#25D366",                 // Bright green for links
   
   // UI Colors
   border: "#E9EDEF",            
@@ -27,7 +27,7 @@ export const colors = {
   divider: "#E9EDEF", 
   iconGray: "#54656F",  
   iconLightGray: "#8696A0", 
-  iconGreen: "#00A884",   
+  iconGreen: "#25D366",               // Bright green for icons   
   white: "#FFFFFF",
   
   // Chat Bubbles
@@ -45,12 +45,12 @@ export const colors = {
   mute: "#8696A0",  
   
   // Buttons (EXACT from screenshot)
-  buttonPrimary: "#008069",           // Agree button - CORRECTED
+  buttonPrimary: "#25D366",          // Bright green for primary buttons
   buttonSecondary: "#F0F2F5",  
   buttonTextPrimary: "#FFFFFF",       // White text on button
-  buttonTextSecondary: "#008069", 
+  buttonTextSecondary: "#25D366", 
   buttonDisabled: "#E0E0E0", 
-  floatingButton: "#00A884", 
+  floatingButton: "#25D366",         // Bright WhatsApp green for FAB 
   
   // Status indicators
   statusBorder: "#25D366", 
@@ -61,18 +61,18 @@ export const colors = {
   callMissed: "#FF3B30",  
   callIncoming: "#25D366", 
   callOutgoing: "#007AFF", 
-  mediaIcon: "#008069", 
+  mediaIcon: "#25D366",               // Bright green for media icons 
   
   // Tab/Header (EXACT from WhatsApp)
-  tabActive: "#008069", 
+  tabActive: "#25D366",              // Bright green for active tab
   tabInactive: "#8696A0",
-  headerBackground: "#008069",
+  headerBackground: "#25D366",       // Bright green for header
   headerText: "#FFFFFF", 
   
   // Search
   searchBackground: "#F0F2F5", 
   searchText: "#111B21",       
-  searchPlaceholder: "#8696A0",
+  searchPlaceholder: "#808080",
   
   // Profile
   profileBackground: "#F0F2F5", 

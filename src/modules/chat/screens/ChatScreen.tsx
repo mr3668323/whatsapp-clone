@@ -164,9 +164,12 @@ export const ChatScreen = () => {
         return () => unsubscribe();
     }, [chatId, currentUserUid, isMetaAIChat]);
 
-    const [messages, setMessages] = useState<any[]>([]);
+    const [messages, setMessages] = useState<any[] | null>(null);
+    const [hasInitialSnapshot, setHasInitialSnapshot] = useState(false);
     const [text, setText] = useState('');
     const prevTextRef = useRef('');
+    const [isMetaAITyping, setIsMetaAITyping] = useState(false);
+    const lastMetaAISendAtRef = useRef<number | null>(null);
     // Store participants for tick logic
     const [participants, setParticipants] = useState<string[]>([]);
     // User name for Meta AI greeting
@@ -220,6 +223,9 @@ export const ChatScreen = () => {
                 .orderBy('createdAt', 'asc')
                 .onSnapshot(
                     snapshot => {
+                        if (!hasInitialSnapshot) {
+                            setHasInitialSnapshot(true);
+                        }
                         if (snapshot.docs.length > 0) {
                             const msgs = snapshot.docs.map(doc => ({
                                 id: doc.id,
@@ -270,9 +276,22 @@ export const ChatScreen = () => {
                             });
                             
                             console.log('[ChatScreen] Meta AI messages loaded from Firestore:', processedMsgs.length, '(deduplicated from', msgs.length, ')');
-                            // CRITICAL: Don't update lastMessageCountRef here - let the effect detect the change
-                            // This ensures auto-scroll triggers when Meta AI sends a reply
+
                             setMessages(processedMsgs);
+
+                            // If we were showing a typing indicator for the latest user message,
+                            // turn it off once we see an AI reply created after the last send time.
+                            if (lastMetaAISendAtRef.current != null) {
+                                const hasNewAIReply = processedMsgs.some((msg: any) => {
+                                    if (msg.senderId !== 'meta_ai' || !msg.createdAt) return false;
+                                    const msgTime = timestampToDate(msg.createdAt)?.getTime() ?? 0;
+                                    return msgTime >= lastMetaAISendAtRef.current!;
+                                });
+                                if (hasNewAIReply) {
+                                    setIsMetaAITyping(false);
+                                    lastMetaAISendAtRef.current = null;
+                                }
+                            }
                             
                             // Also save to AsyncStorage as backup
                             const serializable = msgs.map((msg: any) => ({
@@ -298,6 +317,9 @@ export const ChatScreen = () => {
                                         console.log('[ChatScreen] Meta AI messages loaded from AsyncStorage:', messagesWithTimestamps.length);
                                         // Don't update lastMessageCountRef here - let the effect handle it
                                         setMessages(messagesWithTimestamps);
+                                        if (!hasInitialSnapshot) {
+                                            setHasInitialSnapshot(true);
+                                        }
                                     }
                                 } catch (error) {
                                     console.log('[ChatScreen] Error loading Meta AI messages from AsyncStorage:', error);
@@ -322,6 +344,9 @@ export const ChatScreen = () => {
                                     });
                                     // Don't update lastMessageCountRef here - let the effect handle it
                                     setMessages(messagesWithTimestamps);
+                                    if (!hasInitialSnapshot) {
+                                        setHasInitialSnapshot(true);
+                                    }
                                 }
                             } catch (err) {
                                 console.log('[ChatScreen] Error loading from AsyncStorage fallback:', err);
@@ -348,12 +373,18 @@ export const ChatScreen = () => {
                 }));
                 console.log('[ChatScreen] Messages loaded:', msgs.length, 'messages');
                 setMessages(msgs);
+                if (!hasInitialSnapshot) {
+                    setHasInitialSnapshot(true);
+                }
             }, error => {
                 console.error('[ChatScreen] Error loading messages:', error);
+                if (!hasInitialSnapshot) {
+                    setHasInitialSnapshot(true);
+                }
             });
 
         return () => unsubscribe();
-    }, [chatId, isMetaAIChat, currentUserUid]);
+    }, [chatId, isMetaAIChat, currentUserUid, hasInitialSnapshot]);
 
     /* ==================== MARK MESSAGES AS SEEN ==================== */
     useEffect(() => {
@@ -510,30 +541,45 @@ export const ChatScreen = () => {
         setText('');
         prevTextRef.current = '';
 
-        // Handle Meta AI chat - call backend API
+        // Handle Meta AI chat - call backend API (with optimistic UI)
         if (isMetaAIChat) {
-            // OPTION A: Remove optimistic message - wait for Firestore
-            // This prevents tick downgrade issues
-            // Backend will save the message and Firestore listener will update UI
-            // No optimistic message needed - Firestore is fast enough
-            
-            // Note: We could add optimistic message, but it causes tick flickering
-            // when Firestore overwrites it. Better to wait for Firestore.
+            const now = new Date();
+
+            // Optimistic user message so UI feels instant
+            const tempUserMessage: any = {
+                id: `temp_user_${now.getTime()}`,
+                text: messageText,
+                senderId: currentUserUid,
+                createdAt: firestore.Timestamp.fromDate(now),
+                delivered: false,
+                seen: false,
+                seenBy: [],
+                isTemp: true,
+            };
+
+            setMessages(prev => {
+                const base = prev ?? [];
+                return [...base, tempUserMessage];
+            });
+
+            // Start Meta AI typing indicator immediately
+            setIsMetaAITyping(true);
+            lastMetaAISendAtRef.current = now.getTime();
             
             // Call backend API - backend will save both user message and AI response to Firestore
             try {
                 console.log('[ChatScreen] Calling Meta AI backend API...');
                 await sendMessageToMetaAI(currentUserUid, messageText);
                 console.log('[ChatScreen] ✅ Message sent to backend, waiting for Firestore update...');
-                
-                // Firestore listener will automatically update with both user message and AI response
-                // No need to add optimistic AI message - it will come from Firestore
-                
             } catch (error: any) {
                 console.error('[ChatScreen] ❌ Error getting AI response:', error);
-                
-                // No optimistic message to remove (we removed it to prevent tick flickering)
-                // Error handling: message wasn't sent, so nothing to clean up
+                // Remove optimistic message and typing indicator on error
+                setMessages(prev => {
+                    if (!prev) return prev;
+                    return prev.filter(m => !m.isTemp);
+                });
+                setIsMetaAITyping(false);
+                lastMetaAISendAtRef.current = null;
                 
                 // Show error to user
                 Alert.alert(
@@ -774,45 +820,73 @@ export const ChatScreen = () => {
 
     /* ==================== RENDER MESSAGE ==================== */
     // Ensure messages are sorted by createdAt (chronological) before rendering
-    const chronologicalMessages = [...messages].sort((a, b) => {
+    const chronologicalMessages = (messages ?? []).slice().sort((a, b) => {
         const aDate = timestampToDate(a.createdAt)?.getTime() ?? 0;
         const bDate = timestampToDate(b.createdAt)?.getTime() ?? 0;
         return aDate - bDate;
     });
 
     // For inverted FlatList we render newest first
-    const messagesForList = chronologicalMessages.slice().reverse();
+    let messagesForList = chronologicalMessages.slice().reverse();
+
+    // Append a Meta AI typing indicator as the newest "message" (UI-only, not in Firestore)
+    if (isMetaAIChat && isMetaAITyping) {
+        messagesForList = [
+            {
+                id: 'meta_ai_typing',
+                senderId: 'meta_ai',
+                isTypingIndicator: true,
+                createdAt: firestore.Timestamp.fromDate(new Date()),
+            },
+            ...messagesForList,
+        ];
+    }
 
     const renderMessage = ({ item, index }: any) => {
+        // Meta AI typing indicator bubble (UI-only)
+        if (item.isTypingIndicator) {
+            return (
+                <View style={[chatScreenStyles.messageRow, chatScreenStyles.messageRowOther]}>
+                    <View style={[chatScreenStyles.messageBubble, chatScreenStyles.otherMessage]}>
+                        <View style={chatScreenStyles.typingDotsRow}>
+                            <View style={chatScreenStyles.typingDot} />
+                            <View style={chatScreenStyles.typingDot} />
+                            <View style={chatScreenStyles.typingDot} />
+                        </View>
+                    </View>
+                </View>
+            );
+        }
         const isMe = item.senderId === currentUserUid;
         // Use formatMessageTime - shows only time (hh:mm AM/PM), no date
         const timeStr = formatMessageTime(item.createdAt);
         
-        // Check if we need to show a date separator
-        // Show separator if this is the first message OR if the day is different from previous message
+        // Check if we need to show a date separator.
+        // IMPORTANT: This is based strictly on the chronological (ascending) message order,
+        // not on the inverted FlatList order or typing indicators.
         const showDateSeparator = (() => {
-            if (index === 0) {
-                // Always show separator for first message
+            if (!item.createdAt) return false;
+
+            // Find this message in the chronological list
+            const chronologicalIndex = chronologicalMessages.findIndex(m => m.id === item.id);
+            if (chronologicalIndex === -1) return false;
+
+            if (chronologicalIndex === 0) {
+                // First real message in the chat – always show separator
                 return true;
             }
-            
-            const prevMessage = messagesForList[index - 1];
-            if (!prevMessage || !prevMessage.createdAt || !item.createdAt) {
-                return false;
-            }
-            
-            // Convert timestamps to Date objects
+
+            const prevMessage = chronologicalMessages[chronologicalIndex - 1];
+            if (!prevMessage || !prevMessage.createdAt) return false;
+
             const prevDate = timestampToDate(prevMessage.createdAt);
             const currentDate = timestampToDate(item.createdAt);
-            
-            if (!prevDate || !currentDate) {
-                return false;
-            }
-            
-            // Check if dates are on different calendar days
+            if (!prevDate || !currentDate) return false;
+
+            // Separator only when calendar day changes
             return !isSameDay(prevDate, currentDate);
         })();
-        
+
         // Get date separator label if needed – STRICTLY from Firestore timestamp
         const messageDate = timestampToDate(item.createdAt);
         const dateSeparatorLabel =
@@ -934,11 +1008,35 @@ export const ChatScreen = () => {
                     {isMetaAIChat ? (
                         <MetaAIAvatar size={40} />
                     ) : (
-                        <View style={chatScreenStyles.avatar}>
-                            <Text style={chatScreenStyles.avatarText}>
-                                {isSelfChat ? 'M' : (chatName?.charAt(0) || '?')}
-                            </Text>
-                        </View>
+                        (() => {
+                            // Check if user is unknown (phone number only, no saved name) - same logic as HomeScreen
+                            const isUnknownUser = !isSelfChat && (
+                                !chatName || 
+                                chatName === 'Unknown' || 
+                                (chatName.startsWith('+') && /^\+[0-9]+$/.test(chatName)) ||
+                                (otherUserPhone && chatName === otherUserPhone)
+                            );
+                            
+                            if (isUnknownUser) {
+                                // Show unknown-user icon
+                                return (
+                                    <Image
+                                        source={require('../../../assets/icons/unknown-user.png')}
+                                        style={chatScreenStyles.unknownUserAvatar}
+                                        resizeMode="contain"
+                                    />
+                                );
+                            } else {
+                                // Show initials avatar
+                                return (
+                                    <View style={chatScreenStyles.avatar}>
+                                        <Text style={chatScreenStyles.avatarText}>
+                                            {isSelfChat ? 'M' : (chatName?.charAt(0) || '?')}
+                                        </Text>
+                                    </View>
+                                );
+                            }
+                        })()
                     )}
                 </View>
                 
@@ -990,21 +1088,37 @@ export const ChatScreen = () => {
                             style={chatScreenStyles.menuButton}
                             onPress={handleMenuPress}
                         >
-                            <Text style={chatScreenStyles.menuIcon}>⋮</Text>
+                            <Image
+                                source={require('../../../assets/icons/menu-bar.png')}
+                                style={chatScreenStyles.menuIcon}
+                                resizeMode="contain"
+                            />
                         </TouchableOpacity>
                     ) : (
                         <>
                             <TouchableOpacity style={chatScreenStyles.headerActionButton}>
-                                <Text style={chatScreenStyles.headerActionIcon}>📹</Text>
+                                <Image
+                                    source={require('../../../assets/icons/video-call.png')}
+                                    style={chatScreenStyles.headerActionIcon}
+                                    resizeMode="contain"
+                                />
                             </TouchableOpacity>
                             <TouchableOpacity style={chatScreenStyles.headerActionButton}>
-                                <Text style={chatScreenStyles.headerActionIcon}>📞</Text>
+                                <Image
+                                    source={require('../../../assets/icons/whatsapp-calls.png')}
+                                    style={chatScreenStyles.headerActionIcon}
+                                    resizeMode="contain"
+                                />
                             </TouchableOpacity>
                             <TouchableOpacity 
                                 style={chatScreenStyles.menuButton}
                                 onPress={handleMenuPress}
                             >
-                                <Text style={chatScreenStyles.menuIcon}>⋮</Text>
+                                <Image
+                                source={require('../../../assets/icons/menu-bar.png')}
+                                style={chatScreenStyles.menuIcon}
+                                resizeMode="contain"
+                            />
                             </TouchableOpacity>
                         </>
                     )}
@@ -1019,15 +1133,16 @@ export const ChatScreen = () => {
                 imageStyle={{ opacity: 0.15 }}
                 resizeMode="cover"
             >
-                {isMetaAIChat && messages.length === 0 ? (
-                    // First-time Meta AI screen
+                {/* Hard gate: do not render any message UI until the first snapshot/cache resolves */}
+                {!hasInitialSnapshot ? null : messages && isMetaAIChat && messages.length === 0 ? (
+                    // First-time Meta AI screen (only when we truly have no messages)
                     <MetaAIFirstTimeScreen
                         userName={userName || 'User'}
                         onSuggestionPress={(suggestion) => {
                             setText(suggestion);
                         }}
                     />
-                ) : (
+                ) : messages && messages.length > 0 ? (
                     <FlatList
                         data={messagesForList}
                         keyExtractor={item => item.id}
@@ -1048,7 +1163,7 @@ export const ChatScreen = () => {
                                 )}
 
                                 {/* Meta AI system disclaimer (only for Meta AI chats with messages) */}
-                                {isMetaAIChat && messages.length > 0 && (
+                                {isMetaAIChat && messages && messages.length > 0 && (
                                     <View style={{ paddingVertical: spacing.sm }}>
                                         <View style={chatScreenStyles.systemMessage}>
                                             <Text style={chatScreenStyles.systemMessageText}>
@@ -1060,7 +1175,7 @@ export const ChatScreen = () => {
                             </>
                         )}
                     />
-                )}
+                ) : null}
             </ImageBackground>
 
             {/* Input Bar */}
@@ -1069,11 +1184,18 @@ export const ChatScreen = () => {
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
             >
                 <View style={chatScreenStyles.inputContainer}>
-                    <TouchableOpacity style={chatScreenStyles.emojiButton}>
-                        <Text style={chatScreenStyles.emojiIcon}>😊</Text>
-                    </TouchableOpacity>
-                    
+                    {/* Main pill container: sticker + input + attach + camera (WhatsApp-like) */}
                     <View style={chatScreenStyles.inputWrapper}>
+                        {/* Sticker icon on the left inside the pill */}
+                        <TouchableOpacity style={chatScreenStyles.stickerButton}>
+                            <Image
+                                source={require('../../../assets/icons/sticker.png')}
+                                style={chatScreenStyles.stickerIcon}
+                                resizeMode="contain"
+                            />
+                        </TouchableOpacity>
+
+                        {/* Text input */}
                         <TextInput
                             style={chatScreenStyles.input}
                             placeholder="Message"
@@ -1105,8 +1227,29 @@ export const ChatScreen = () => {
                                 }
                             }}
                         />
+
+                        {/* Attach and camera icons on the right inside the pill */}
+                        {!text.trim() && (
+                            <>
+                                <TouchableOpacity style={chatScreenStyles.attachButton}>
+                                    <Image
+                                        source={require('../../../assets/icons/attach-document.png')}
+                                        style={chatScreenStyles.attachIcon}
+                                        resizeMode="contain"
+                                    />
+                                </TouchableOpacity>
+                                <TouchableOpacity style={chatScreenStyles.cameraButton}>
+                                    <Image
+                                        source={require('../../../assets/icons/whatsapp-camera.png')}
+                                        style={chatScreenStyles.cameraIcon}
+                                        resizeMode="contain"
+                                    />
+                                </TouchableOpacity>
+                            </>
+                        )}
                     </View>
                     
+                    {/* Send button or mic button to the right of the pill */}
                     {text.trim() ? (
                         <TouchableOpacity
                             style={chatScreenStyles.sendButton}
@@ -1115,21 +1258,13 @@ export const ChatScreen = () => {
                             <Text style={chatScreenStyles.sendIcon}>➤</Text>
                         </TouchableOpacity>
                     ) : (
-                        <>
-                            <TouchableOpacity style={chatScreenStyles.attachButton}>
-                                <Text style={chatScreenStyles.attachIcon}>📎</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={chatScreenStyles.cameraButton}>
-                                <Image
-                                    source={require('../../../assets/icons/whatsapp-camera.png')}
-                                    style={chatScreenStyles.cameraIcon}
-                                    resizeMode="contain"
-                                />
-                            </TouchableOpacity>
-                            <TouchableOpacity style={chatScreenStyles.micButton}>
-                                <Text style={chatScreenStyles.micIcon}>🎤</Text>
-                            </TouchableOpacity>
-                        </>
+                        <TouchableOpacity style={chatScreenStyles.micButton}>
+                            <Image
+                                source={require('../../../assets/icons/voice-message.png')}
+                                style={chatScreenStyles.micIcon}
+                                resizeMode="contain"
+                            />
+                        </TouchableOpacity>
                     )}
                 </View>
             </KeyboardAvoidingView>

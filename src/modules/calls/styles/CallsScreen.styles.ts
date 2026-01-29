@@ -33,14 +33,14 @@ export const callsScreenStyles = StyleSheet.create({
     padding: spacing.xs,
   },
   searchIcon: {
-    fontSize: typography.fontSize.lg,
-    fontFamily: typography.fontFamily.regular,
-    color: colors.iconGray,
+    width: typography.fontSize.lg * 1.6,
+    height: typography.fontSize.lg * 1.6,
+    tintColor: colors.textPrimary,
   },
   menuIcon: {
-    fontSize: typography.fontSize.lg,
-    fontFamily: typography.fontFamily.regular,
-    color: colors.iconGray,
+    width: typography.fontSize.lg * 1.3,
+    height: typography.fontSize.lg * 1.3,
+    tintColor: colors.textPrimary,
   },
   scrollView: {
     flex: 1,

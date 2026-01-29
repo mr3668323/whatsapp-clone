@@ -82,7 +82,11 @@ export const SettingsScreen: React.FC = () => {
         <Text style={settingsScreenStyles.headerTitle}>Settings</Text>
         
         <TouchableOpacity style={settingsScreenStyles.searchButton}>
-          <Text style={settingsScreenStyles.searchIcon}>🔍</Text>
+          <Image
+            source={require('../../../assets/icons/search.png')}
+            style={settingsScreenStyles.searchIcon}
+            resizeMode="contain"
+          />
         </TouchableOpacity>
       </View>
 

@@ -23,7 +23,7 @@ const TabIcon: React.FC<TabIconProps> = ({ name, focused }) => {
                 style={[
                     bottomTabNavigatorStyles.tabIconWrapper,
                     {
-                        backgroundColor: focused ? colors.bubbleSent : 'transparent',
+                        backgroundColor: focused ? colors.whatsappGreen : 'transparent',
                     },
                 ]}
             >

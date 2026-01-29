@@ -25,7 +25,7 @@ export const settingsScreenStyles = StyleSheet.create({
   backIcon: {
     width: spacing.lg * 1.2,
     height: spacing.lg * 1.2,
-    tintColor: colors.whatsappTeal,
+    tintColor: colors.whatsappGreen,
   },
   headerTitle: {
     fontSize: typography.fontSize.xl,
@@ -36,9 +36,9 @@ export const settingsScreenStyles = StyleSheet.create({
     padding: spacing.xs,
   },
   searchIcon: {
-    fontSize: typography.fontSize.lg,
-    fontFamily: typography.fontFamily.regular,
-    color: colors.iconGray,
+    width: typography.fontSize.lg * 1.6,
+    height: typography.fontSize.lg * 1.6,
+    tintColor: colors.iconGray,
   },
   scrollView: {
     flex: 1,

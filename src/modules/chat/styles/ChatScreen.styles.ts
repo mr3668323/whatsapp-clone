@@ -37,7 +37,7 @@ export const chatScreenStyles = StyleSheet.create({
     width: 40, // Smaller avatar like WhatsApp header
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.whatsappTeal,
+    backgroundColor: colors.whatsappGreen,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -45,6 +45,11 @@ export const chatScreenStyles = StyleSheet.create({
     fontSize: typography.fontSize.lg,
     fontFamily: typography.fontFamily.bold,
     color: colors.white,
+  },
+  unknownUserAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
   },
   headerInfo: {
     flex: 1,
@@ -71,15 +76,17 @@ export const chatScreenStyles = StyleSheet.create({
     padding: spacing.xs,
   },
   headerActionIcon: {
-    fontSize: typography.fontSize.lg,
+    width: spacing.iconSize,
+    height: spacing.iconSize,
+    tintColor: colors.textPrimary,
   },
   menuButton: {
     padding: spacing.xs,
   },
   menuIcon: {
-    fontSize: typography.fontSize.xl,
-    color: colors.textPrimary, // Black text
-    fontFamily: typography.fontFamily.regular,
+    width: typography.fontSize.lg * 1.3,
+    height: typography.fontSize.lg * 1.3,
+    tintColor: colors.textPrimary,
   },
 
   /* -------------------- Background Image -------------------- */
@@ -174,22 +181,38 @@ export const chatScreenStyles = StyleSheet.create({
     color: colors.whatsappBlue, // blue ✔✔
   },
 
+  /* -------------------- Meta AI Typing Indicator -------------------- */
+  typingDotsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    gap: spacing.xs,
+  },
+  typingDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.textSecondary,
+  },
+
   /* -------------------- Input Area -------------------- */
   inputContainer: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'center', // Align pill and mic on same vertical center (WhatsApp-like)
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.sm,
     backgroundColor: colors.backgroundInput,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
-  emojiButton: {
+  stickerButton: {
     padding: spacing.xs,
     marginRight: spacing.xs,
   },
-  emojiIcon: {
-    fontSize: typography.fontSize.lg,
+  stickerIcon: {
+    width: spacing.iconSize,
+    height: spacing.iconSize,
+    tintColor: colors.textPrimary,
   },
   inputWrapper: {
     flex: 1,
@@ -198,8 +221,11 @@ export const chatScreenStyles = StyleSheet.create({
     paddingHorizontal: spacing.base,
     paddingVertical: spacing.xs,
     maxHeight: 100,
+    flexDirection: 'row', // Sticker, text, attach, camera on one row
+    alignItems: 'center',
   },
   input: {
+    flex: 1,
     fontSize: typography.fontSize.base,
     color: colors.textPrimary,
     fontFamily: typography.fontFamily.regular,
@@ -211,15 +237,18 @@ export const chatScreenStyles = StyleSheet.create({
     marginLeft: spacing.xs,
   },
   attachIcon: {
-    fontSize: typography.fontSize.lg,
+    width: spacing.iconSize,
+    height: spacing.iconSize,
+    tintColor: colors.textPrimary,
   },
   cameraButton: {
     padding: spacing.xs,
     marginLeft: spacing.xs,
   },
   cameraIcon: {
-    width: typography.fontSize.lg * 1.6,
-    height: typography.fontSize.lg * 1.6,
+    width: spacing.iconSize,
+    height: spacing.iconSize,
+    tintColor: colors.textPrimary,
   },
   micButton: {
     width: spacing.inputHeight,
@@ -231,7 +260,9 @@ export const chatScreenStyles = StyleSheet.create({
     marginLeft: spacing.xs,
   },
   micIcon: {
-    fontSize: typography.fontSize.lg,
+    width: spacing.iconSize,
+    height: spacing.iconSize,
+    tintColor: colors.white,
   },
   sendButton: {
     width: spacing.inputHeight,

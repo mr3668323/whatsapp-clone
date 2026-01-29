@@ -6,6 +6,7 @@ import {
   Text,
   TouchableOpacity,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -110,7 +111,7 @@ export const ContactProfileScreen: React.FC = () => {
     backIcon: {
       width: spacing.lg * 1.2,
       height: spacing.lg * 1.2,
-      tintColor: colors.whatsappTeal,
+      tintColor: colors.whatsappGreen,
     },
     headerTitle: {
       fontSize: typography.fontSize.xl,
@@ -136,7 +137,7 @@ export const ContactProfileScreen: React.FC = () => {
       width: spacing.avatarSize * 2,
       height: spacing.avatarSize * 2,
       borderRadius: spacing.avatarSize,
-      backgroundColor: colors.whatsappTeal,
+      backgroundColor: colors.whatsappGreen,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
       marginBottom: spacing.md,
@@ -145,6 +146,11 @@ export const ContactProfileScreen: React.FC = () => {
       fontSize: typography.fontSize['4xl'],
       fontFamily: typography.fontFamily.bold,
       color: colors.white,
+    },
+    unknownUserAvatar: {
+      width: spacing.avatarSize * 2,
+      height: spacing.avatarSize * 2,
+      borderRadius: spacing.avatarSize,
     },
     profileItem: {
       flexDirection: 'row' as const,
@@ -205,12 +211,18 @@ export const ContactProfileScreen: React.FC = () => {
           <Text style={profileScreenStyles.headerTitle}>Contact Info</Text>
         </View>
         <View style={profileScreenStyles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.whatsappTeal} />
+          <ActivityIndicator size="large" color={colors.whatsappGreen} />
         </View>
       </SafeAreaView>
     );
   }
 
+  // Check if user is unknown (phone number only, no saved name)
+  const isUnknownUser = !displayName || 
+    displayName === 'Unknown' || 
+    (displayName.startsWith('+') && /^\+[0-9]+$/.test(displayName)) ||
+    (phoneNumber && displayName === phoneNumber);
+  
   const avatarLetter = displayName?.charAt(0)?.toUpperCase() || '?';
 
   return (
@@ -235,7 +247,15 @@ export const ContactProfileScreen: React.FC = () => {
         {/* Avatar Section */}
         <View style={profileScreenStyles.avatarSection}>
           <View style={profileScreenStyles.avatar}>
-            <Text style={profileScreenStyles.avatarText}>{avatarLetter}</Text>
+            {isUnknownUser ? (
+              <Image
+                source={require('../../../assets/icons/unknown-user.png')}
+                style={profileScreenStyles.unknownUserAvatar}
+                resizeMode="contain"
+              />
+            ) : (
+              <Text style={profileScreenStyles.avatarText}>{avatarLetter}</Text>
+            )}
           </View>
         </View>
 

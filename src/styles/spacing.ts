@@ -20,5 +20,5 @@ export const spacing = {
   buttonRadius: 24,         // Button border radius
   inputHeight: 52,          // Input field height
   iconSize: 24,             // Standard icon size
-  avatarSize: 56,           // Profile avatar size
+  avatarSize: 50,           // Profile avatar size
 }

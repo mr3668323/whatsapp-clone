@@ -17,7 +17,7 @@ export const callCardStyles = StyleSheet.create({
     width: spacing.iconSize * 2,
     height: spacing.iconSize * 2,
     borderRadius: spacing.iconSize,
-    backgroundColor: colors.whatsappTeal,
+    backgroundColor: colors.whatsappGreen,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,

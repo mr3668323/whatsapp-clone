@@ -20,7 +20,7 @@ export const profileHeaderStyles = StyleSheet.create({
     width: spacing.avatarSize + spacing.xs,
     height: spacing.avatarSize + spacing.xs,
     borderRadius: (spacing.avatarSize + spacing.xs) / 2,
-    backgroundColor: colors.whatsappTeal,
+    backgroundColor: colors.whatsappGreen,
     alignItems: 'center',
     justifyContent: 'center',
   },

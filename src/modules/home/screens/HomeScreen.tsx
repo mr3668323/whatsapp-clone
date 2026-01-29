@@ -100,11 +100,34 @@ const ChatItem = React.memo(
           {chat.isMetaAI ? (
             <MetaAIAvatar size={48} />
           ) : (
-            <View style={homeScreenStyles.regularAvatar}>
-              <Text style={homeScreenStyles.avatarText}>
-                {isSelfChat ? 'M' : (chat.otherUserName?.charAt(0) || '?')}
-              </Text>
-            </View>
+            (() => {
+              // Check if user is unknown (phone number only, no saved name)
+              const isUnknownUser = !isSelfChat && (
+                !chat.otherUserName || 
+                chat.otherUserName === 'Unknown' || 
+                (chat.otherUserName.startsWith('+') && /^\+[0-9]+$/.test(chat.otherUserName))
+              );
+              
+              if (isUnknownUser) {
+                // Show unknown-user icon
+                return (
+                  <Image
+                    source={require('../../../assets/icons/unknown-user.png')}
+                    style={homeScreenStyles.unknownUserAvatar}
+                    resizeMode="contain"
+                  />
+                );
+              } else {
+                // Show initials avatar
+                return (
+                  <View style={homeScreenStyles.regularAvatar}>
+                    <Text style={homeScreenStyles.avatarText}>
+                      {isSelfChat ? 'M' : (chat.otherUserName?.charAt(0) || '?')}
+                    </Text>
+                  </View>
+                );
+              }
+            })()
           )}
           {/* NO ONLINE INDICATOR - WhatsApp doesn't show it in chat list */}
         </View>
@@ -503,7 +526,11 @@ export const HomeScreen = () => {
             style={homeScreenStyles.headerButton}
             onPress={() => setMenuVisible(true)}
           >
-            <Text style={homeScreenStyles.moreIcon}>⋮</Text>
+            <Image
+              source={require('../../../assets/icons/menu-bar.png')}
+              style={homeScreenStyles.moreIcon}
+              resizeMode="contain"
+            />
           </TouchableOpacity>
         </View>
       </View>
@@ -511,10 +538,14 @@ export const HomeScreen = () => {
       {/* Search */}
       <View style={homeScreenStyles.searchContainer}>
         <View style={homeScreenStyles.searchInputWrapper}>
-          <Text style={homeScreenStyles.searchIcon}>🔍</Text>
+          <Image
+            source={require('../../../assets/icons/search.png')}
+            style={homeScreenStyles.searchIcon}
+            resizeMode="contain"
+          />
           <TextInput
             style={homeScreenStyles.searchInput}
-            placeholder="Search"
+            placeholder="Ask Meta AI or Search"
             placeholderTextColor={colors.searchPlaceholder}
             value={searchQuery}
             onChangeText={setSearchQuery}

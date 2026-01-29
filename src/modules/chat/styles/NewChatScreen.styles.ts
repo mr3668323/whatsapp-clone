@@ -156,6 +156,11 @@ export const newChatScreenStyles = StyleSheet.create({
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.bold,
   },
+  unknownUserAvatar: {
+    width: spacing.iconSize , // 24 + 16 = 40
+    height: spacing.iconSize , // 24 + 16 = 40
+    borderRadius: spacing.buttonRadius, // 24 (half of 48, but using buttonRadius for consistency)
+  },
   contactInfo: {
     flex: 1,
   },

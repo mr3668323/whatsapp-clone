@@ -34,7 +34,7 @@ export const splashScreenStyles = StyleSheet.create({
     fontSize: typography.fontSize["4xl"],
     fontWeight: typography.fontWeight.light,
     fontFamily: typography.fontFamily.regular,
-    color: colors.whatsappTeal, // WhatsApp teal (#008069)
+    color: colors.whatsappGreen, // WhatsApp bright green
     letterSpacing: 0.5,
   },
   
@@ -66,7 +66,7 @@ export const splashScreenStyles = StyleSheet.create({
     // Make icon clearly visible and slightly larger
     fontSize: typography.fontSize["2xl"],
     fontFamily: typography.fontFamily.medium,
-    color: colors.whatsappTeal, // WhatsApp teal (#008069) - CORRECTED
+    color: colors.whatsappGreen, // WhatsApp bright green - CORRECTED
     fontWeight: typography.fontWeight.medium,
     marginRight: spacing.sm, // Space between icon and text
   },
@@ -77,13 +77,13 @@ export const splashScreenStyles = StyleSheet.create({
     fontSize: typography.fontSize["2xl"],
     fontFamily: typography.fontFamily.bold,
     fontWeight: typography.fontWeight.bold, // Bold
-    color: colors.whatsappTeal, // WhatsApp teal (#008069) - CORRECTED
+    color: colors.whatsappGreen, // WhatsApp bright green - CORRECTED
   },
   
   // If using meta logo image instead
   metaLogoImage: {
     width: 70,
     height: 22,
-    tintColor: colors.whatsappTeal, // Make image teal if needed
+    tintColor: colors.whatsappGreen, // WhatsApp bright green
   },
 })

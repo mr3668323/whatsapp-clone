@@ -9,6 +9,7 @@ import {
   FlatList,
   ActivityIndicator,
   StatusBar,
+  Image,
 } from 'react-native';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
@@ -424,9 +425,30 @@ export const NewChatScreen: React.FC = () => {
         }
       >
         <View style={newChatScreenStyles.contactAvatar}>
-          <Text style={newChatScreenStyles.contactAvatarText}>
-            {item.isSelf ? 'M' : (item.name || item.phoneNumber)[0]?.toUpperCase()}
-          </Text>
+          {(() => {
+            // Check if user is unknown (name is phone number or missing)
+            const isUnknownUser = !item.isSelf && (
+              !item.name || 
+              item.name === item.phoneNumber || 
+              (item.name.startsWith('+') && /^\+[0-9]+$/.test(item.name))
+            );
+            
+            if (isUnknownUser) {
+              return (
+                <Image
+                  source={require('../../../assets/icons/unknown-user.png')}
+                  style={newChatScreenStyles.unknownUserAvatar}
+                  resizeMode="contain"
+                />
+              );
+            } else {
+              return (
+                <Text style={newChatScreenStyles.contactAvatarText}>
+                  {item.isSelf ? 'M' : (item.name || item.phoneNumber)[0]?.toUpperCase()}
+                </Text>
+              );
+            }
+          })()}
         </View>
 
         <View style={newChatScreenStyles.contactInfo}>

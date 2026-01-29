@@ -21,7 +21,7 @@ export const homeScreenStyles = StyleSheet.create({
   headerTitle: {
     fontSize: typography.fontSize['3xl'],
     fontFamily: typography.fontFamily.bold,
-    color: colors.whatsappTeal, // WhatsApp teal color
+    color: colors.whatsappGreen, // WhatsApp bright green
     letterSpacing: -0.5,
   },
   headerActions: {
@@ -81,7 +81,7 @@ export const homeScreenStyles = StyleSheet.create({
     position: 'relative',
   },
   regularAvatar: {
-    backgroundColor: colors.whatsappTeal, // WhatsApp teal for avatar
+    backgroundColor: colors.whatsappGreen, // WhatsApp bright green for avatar
     width: spacing.avatarSize,
     height: spacing.avatarSize,
     borderRadius: spacing.avatarSize / 2,
@@ -92,6 +92,11 @@ export const homeScreenStyles = StyleSheet.create({
     fontSize: typography.fontSize.xl,
     fontFamily: typography.fontFamily.bold,
     color: colors.white,
+  },
+  unknownUserAvatar: {
+    width: spacing.avatarSize,
+    height: spacing.avatarSize,
+    borderRadius: spacing.avatarSize / 2,
   },
   onlineIndicator: {
     position: 'absolute',
@@ -180,7 +185,7 @@ export const homeScreenStyles = StyleSheet.create({
     textAlign: 'center',
   },
   encryptionHighlight: {
-    color: colors.whatsappTeal,
+    color: colors.whatsappGreen,
     fontFamily: typography.fontFamily.semibold,
   },
   fabContainer: {
@@ -236,17 +241,17 @@ export const homeScreenStyles = StyleSheet.create({
   cameraIcon: {
     width: typography.fontSize.lg * 1.6,
     height: typography.fontSize.lg * 1.6,
-    tintColor: colors.iconGray, // Gray icon on white header
+    tintColor: colors.textPrimary, // Gray icon on white header
   },
   moreIcon: {
-    fontSize: typography.fontSize.xl,
-    fontFamily: typography.fontFamily.regular,
-    color: colors.iconGray, // Gray icon on white header
+    width: typography.fontSize.lg * 1.3,
+    height: typography.fontSize.lg * 1.3,
+    tintColor: colors.textPrimary,
   },
   searchIcon: {
-    fontSize: typography.fontSize.lg,
-    fontFamily: typography.fontFamily.regular,
-    color: colors.searchPlaceholder,
+    width: typography.fontSize.lg * 1.2,
+    height: typography.fontSize.lg * 1.2,
+    tintColor: colors.textPrimary,
   },
   plusIcon: {
     fontSize: typography.fontSize["3xl"],

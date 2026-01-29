@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   SafeAreaView,
   StatusBar,
+  Image,
 } from 'react-native';
 import { communitiesScreenStyles } from '../styles/CommunitiesScreen.styles';
 import { CommunitiesMenuBar } from '../components/CommunitiesMenuBar';
@@ -131,7 +132,11 @@ export const CommunitiesScreen: React.FC = () => {
           style={communitiesScreenStyles.headerButton} 
           onPress={() => setMenuVisible(true)}
         >
-          <Text style={communitiesScreenStyles.menuIcon}>⋮</Text>
+          <Image
+            source={require('../../../assets/icons/menu-bar.png')}
+            style={communitiesScreenStyles.menuIcon}
+            resizeMode="contain"
+          />
         </TouchableOpacity>
       </View>
 

@@ -124,7 +124,7 @@ export const privacyPolicyStyles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: spacing.buttonHeight + spacing.sm,
-    backgroundColor: colors.whatsappTeal,
+    backgroundColor: colors.whatsappGreen,
   },
   
   title: {
