@@ -150,9 +150,9 @@ export const privacyPolicyStyles = StyleSheet.create({
     width: '100%',
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.md,
-    paddingBottom: spacing.xl + spacing.md, // Space above system navigation bar
-    backgroundColor: colors.white, // White background to cover scroll content
+    paddingBottom: spacing.xl + spacing.md,
+    backgroundColor: colors.white,
     borderTopWidth: 0.5,
-    borderTopColor: colors.border, // Subtle top border
+    borderTopColor: colors.border, 
   },
 });

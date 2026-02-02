@@ -23,7 +23,7 @@ export const phoneVerificationStyles = StyleSheet.create({
   backIcon: {
     width: spacing.lg * 1.2,
     height: spacing.lg * 1.2,
-    tintColor: colors.whatsappGreen,
+    tintColor: colors.textPrimary,
   },
   headerTitle: {
     fontSize: typography.fontSize.lg,

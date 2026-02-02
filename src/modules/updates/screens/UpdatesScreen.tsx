@@ -13,7 +13,7 @@ import {
   Image,
 } from 'react-native';
 import { updatesScreenStyles } from '../styles/UpdatesScreen.styles';
-import { colors } from '../../../styles/colors';
+import { useTheme } from '../../../contexts/ThemeContext';
 import { dummyStatuses, dummyChannels } from '../../../data/dummyUpdates';
 
 // Import navigation hooks
@@ -24,6 +24,7 @@ import { RootStackParamList } from '../../../types/navigation';
 export const UpdatesScreen: React.FC = () => {
   // Get navigation prop
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { theme, isDark } = useTheme();
   
   // Dropdown state
   const [isDropdownVisible, setIsDropdownVisible] = useState(false);
@@ -146,7 +147,7 @@ export const UpdatesScreen: React.FC = () => {
   // Render search header
   const renderSearchHeader = () => {
     return (
-      <View style={updatesScreenStyles.header}>
+      <View style={[updatesScreenStyles.header, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
         <Animated.View
           style={[
             updatesScreenStyles.headerTitleContainer,
@@ -164,7 +165,7 @@ export const UpdatesScreen: React.FC = () => {
             },
           ]}
         >
-          <Text style={updatesScreenStyles.headerTitle}>Updates</Text>
+          <Text style={[updatesScreenStyles.headerTitle, { color: theme.textPrimary }]}>Updates</Text>
         </Animated.View>
 
         <Animated.View
@@ -183,22 +184,22 @@ export const UpdatesScreen: React.FC = () => {
             },
           ]}
         >
-          <View style={updatesScreenStyles.searchContainer}>
+          <View style={[updatesScreenStyles.searchContainer, { backgroundColor: theme.searchBackground }]}>
             <TouchableOpacity
               onPress={exitSearchMode}
               style={updatesScreenStyles.searchBackButton}
             >
               <Image
                 source={require('../../../assets/icons/back.png')}
-                style={updatesScreenStyles.searchBackIcon}
+                style={[updatesScreenStyles.searchBackIcon, { tintColor: theme.textPrimary }]}
                 resizeMode="contain"
               />
             </TouchableOpacity>
             
             <TextInput
-              style={updatesScreenStyles.searchInput}
+              style={[updatesScreenStyles.searchInput, { color: theme.searchText }]}
               placeholder="Search status and channels..."
-              placeholderTextColor={colors.textTertiary}
+              placeholderTextColor={theme.textTertiary}
               value={searchQuery}
               onChangeText={handleSearchChange}
               autoFocus={false}
@@ -209,7 +210,7 @@ export const UpdatesScreen: React.FC = () => {
                 onPress={clearSearch}
                 style={updatesScreenStyles.clearButton}
               >
-                <Text style={updatesScreenStyles.clearIcon}>×</Text>
+                <Text style={[updatesScreenStyles.clearIcon, { color: theme.textTertiary }]}>×</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -223,7 +224,7 @@ export const UpdatesScreen: React.FC = () => {
             >
               <Image
                 source={require('../../../assets/icons/search.png')}
-                style={updatesScreenStyles.searchIcon}
+                style={[updatesScreenStyles.searchIcon, { tintColor: theme.textPrimary }]}
                 resizeMode="contain"
               />
             </TouchableOpacity>
@@ -234,7 +235,7 @@ export const UpdatesScreen: React.FC = () => {
           >
             <Image
               source={require('../../../assets/icons/menu-bar.png')}
-              style={updatesScreenStyles.moreIcon}
+              style={[updatesScreenStyles.moreIcon, { tintColor: theme.textPrimary }]}
               resizeMode="contain"
             />
           </TouchableOpacity>
@@ -249,15 +250,15 @@ export const UpdatesScreen: React.FC = () => {
       return (
         <TouchableOpacity style={updatesScreenStyles.myStatusCard}>
           <View style={updatesScreenStyles.statusAvatarContainer}>
-            <View style={updatesScreenStyles.myStatusAvatar}>
-              <Text style={updatesScreenStyles.myStatusAvatarText}>{item.avatar}</Text>
+            <View style={[updatesScreenStyles.myStatusAvatar, { backgroundColor: theme.whatsappGreen }]}>
+              <Text style={[updatesScreenStyles.myStatusAvatarText, { color: theme.white }]}>{item.avatar}</Text>
             </View>
             {/* Add photo/video status icon (existing WhatsApp-style plus) */}
-            <View style={updatesScreenStyles.addStatusIcon}>
-              <Text style={updatesScreenStyles.addStatusIconText}>+</Text>
+            <View style={[updatesScreenStyles.addStatusIcon, { backgroundColor: theme.whatsappGreen }]}>
+              <Text style={[updatesScreenStyles.addStatusIconText, { color: theme.white }]}>+</Text>
             </View>
           </View>
-          <Text style={updatesScreenStyles.statusName} numberOfLines={1}>
+          <Text style={[updatesScreenStyles.statusName, { color: theme.textPrimary }]} numberOfLines={1}>
             {item.name}
           </Text>
         </TouchableOpacity>
@@ -268,15 +269,16 @@ export const UpdatesScreen: React.FC = () => {
     return (
       <TouchableOpacity style={updatesScreenStyles.statusCard}>
         <View style={updatesScreenStyles.statusImageContainer}>
-          <View style={updatesScreenStyles.statusImagePlaceholder} />
+          <View style={[updatesScreenStyles.statusImagePlaceholder, { backgroundColor: theme.backgroundGray }]} />
           <View style={[
             updatesScreenStyles.statusProfileAvatar,
+            { backgroundColor: theme.whatsappGreen },
             item.hasSeen ? updatesScreenStyles.seenStatusAvatar : updatesScreenStyles.unseenStatusAvatar
           ]}>
-            <Text style={updatesScreenStyles.statusProfileAvatarText}>{item.avatar}</Text>
+            <Text style={[updatesScreenStyles.statusProfileAvatarText, { color: theme.white }]}>{item.avatar}</Text>
           </View>
         </View>
-        <Text style={updatesScreenStyles.statusName} numberOfLines={1}>
+        <Text style={[updatesScreenStyles.statusName, { color: theme.textPrimary }]} numberOfLines={1}>
           {item.name}
         </Text>
       </TouchableOpacity>
@@ -284,32 +286,32 @@ export const UpdatesScreen: React.FC = () => {
   };
 
   const renderChannelItem = ({ item }: { item: typeof dummyChannels[0] }) => (
-    <TouchableOpacity style={updatesScreenStyles.channelCard}>
-      <View style={updatesScreenStyles.channelAvatar}>
+    <TouchableOpacity style={[updatesScreenStyles.channelCard, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
+      <View style={[updatesScreenStyles.channelAvatar, { backgroundColor: theme.backgroundGray }]}>
         <Text style={updatesScreenStyles.channelAvatarText}>📢</Text>
       </View>
       <View style={updatesScreenStyles.channelInfo}>
         <View style={updatesScreenStyles.channelHeader}>
-          <Text style={updatesScreenStyles.channelName}>{item.name}</Text>
+          <Text style={[updatesScreenStyles.channelName, { color: theme.textPrimary }]}>{item.name}</Text>
           {item.isVerified && (
-            <Text style={updatesScreenStyles.verifiedBadge}>✓</Text>
+            <Text style={[updatesScreenStyles.verifiedBadge, { color: theme.whatsappGreen }]}>✓</Text>
           )}
           {item.isMuted && (
             <Text style={updatesScreenStyles.mutedIcon}>🔇</Text>
           )}
         </View>
-        <Text style={updatesScreenStyles.channelLastUpdate}>{item.lastUpdate}</Text>
+        <Text style={[updatesScreenStyles.channelLastUpdate, { color: theme.textSecondary }]}>{item.lastUpdate}</Text>
         <View style={updatesScreenStyles.channelMessagePreview}>
           {item.messageType === 'link' && (
             <Text style={updatesScreenStyles.linkIcon}>🔗</Text>
           )}
-          <Text style={updatesScreenStyles.channelLastMessage} numberOfLines={1}>
+          <Text style={[updatesScreenStyles.channelLastMessage, { color: theme.textSecondary }]} numberOfLines={1}>
             {item.lastMessage}
           </Text>
         </View>
       </View>
       {item.hasUnread && (
-        <View style={updatesScreenStyles.unreadIndicator} />
+        <View style={[updatesScreenStyles.unreadIndicator, { backgroundColor: theme.unreadBadge }]} />
       )}
     </TouchableOpacity>
   );
@@ -321,10 +323,10 @@ export const UpdatesScreen: React.FC = () => {
 
   return (
     <TouchableWithoutFeedback onPress={closeDropdown}>
-      <SafeAreaView style={updatesScreenStyles.container}>
+      <SafeAreaView style={[updatesScreenStyles.container, { backgroundColor: theme.background }]}>
         <StatusBar
-          backgroundColor={colors.white}
-          barStyle="dark-content"
+          backgroundColor={theme.background}
+          barStyle={isDark ? 'light-content' : 'dark-content'}
         />
         
         {/* Header */}
@@ -334,11 +336,12 @@ export const UpdatesScreen: React.FC = () => {
         {isDropdownVisible && (
           <>
             <TouchableWithoutFeedback onPress={closeDropdown}>
-              <View style={updatesScreenStyles.overlay} />
+              <View style={[updatesScreenStyles.overlay, { backgroundColor: 'transparent' }]} />
             </TouchableWithoutFeedback>
             <Animated.View
               style={[
                 updatesScreenStyles.dropdownMenu,
+                { backgroundColor: theme.background },
                 {
                   opacity: dropdownAnimation,
                   transform: [
@@ -355,10 +358,10 @@ export const UpdatesScreen: React.FC = () => {
               {menuItems.map((item, index) => (
                 <TouchableOpacity
                   key={index}
-                  style={updatesScreenStyles.menuItem}
+                  style={[updatesScreenStyles.menuItem, { backgroundColor: theme.background, borderBottomColor: theme.border }]}
                   onPress={() => handleMenuItemClick(item)}
                 >
-                  <Text style={updatesScreenStyles.menuItemText}>{item}</Text>
+                  <Text style={[updatesScreenStyles.menuItemText, { color: theme.textPrimary }]}>{item}</Text>
                 </TouchableOpacity>
               ))}
             </Animated.View>
@@ -367,8 +370,8 @@ export const UpdatesScreen: React.FC = () => {
 
         {/* Status Section */}
         {(!searchQuery || filteredStatuses.length > 0) && (
-          <View style={updatesScreenStyles.statusSection}>
-            <Text style={updatesScreenStyles.sectionTitle}>Status</Text>
+          <View style={[updatesScreenStyles.statusSection, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
+            <Text style={[updatesScreenStyles.sectionTitle, { color: theme.textSecondary }]}>Status</Text>
             {filteredStatuses.length > 0 ? (
               <FlatList
                 data={filteredStatuses}
@@ -383,11 +386,11 @@ export const UpdatesScreen: React.FC = () => {
         )}
 
         {/* Channels Section */}
-        <ScrollView style={updatesScreenStyles.channelsSection} showsVerticalScrollIndicator={false}>
+        <ScrollView style={[updatesScreenStyles.channelsSection, { backgroundColor: theme.background }]} showsVerticalScrollIndicator={false}>
           {/* No results message */}
           {noResultsAtAll ? (
             <View style={updatesScreenStyles.noResultsContainer}>
-              <Text style={updatesScreenStyles.noResultsText}>
+              <Text style={[updatesScreenStyles.noResultsText, { color: theme.textSecondary }]}>
                 No results found for "{searchQuery}"
               </Text>
             </View>
@@ -395,7 +398,7 @@ export const UpdatesScreen: React.FC = () => {
             <>
               {(!searchQuery || filteredChannels.length > 0) && (
                 <View style={updatesScreenStyles.channelsHeader}>
-                  <Text style={updatesScreenStyles.sectionTitle}>Channels</Text>
+                  <Text style={[updatesScreenStyles.sectionTitle, { color: theme.textSecondary }]}>Channels</Text>
                   {!searchQuery && (
                     <TouchableOpacity style={updatesScreenStyles.exploreButton}>
                       <Text style={updatesScreenStyles.exploreButtonText}>Explore</Text>
@@ -437,7 +440,7 @@ export const UpdatesScreen: React.FC = () => {
         <View style={updatesScreenStyles.fabContainer}>
           {/* Text status (pencil) - smaller FAB above camera, WhatsApp-style */}
           <TouchableOpacity
-            style={updatesScreenStyles.pencilFab}
+            style={[updatesScreenStyles.pencilFab, { backgroundColor: theme.backgroundGray }]}
             onPress={() => {
               console.log('Text status FAB pressed');
             }}
@@ -445,14 +448,14 @@ export const UpdatesScreen: React.FC = () => {
           >
             <Image
               source={require('../../../assets/icons/text.png')}
-              style={updatesScreenStyles.pencilIconImage}
+              style={[updatesScreenStyles.pencilIconImage, { tintColor: theme.textPrimary }]}
               resizeMode="contain"
             />
           </TouchableOpacity>
 
           {/* Camera status (photo/video) */}
           <TouchableOpacity
-            style={updatesScreenStyles.cameraFab}
+            style={[updatesScreenStyles.cameraFab, { backgroundColor: theme.floatingButton }]}
             onPress={() => {
               console.log('Camera status FAB pressed');
             }}
@@ -460,7 +463,7 @@ export const UpdatesScreen: React.FC = () => {
           >
             <Image
               source={require('../../../assets/icons/whatsapp-camera.png')}
-              style={updatesScreenStyles.cameraIcon}
+              style={[updatesScreenStyles.cameraIcon, { tintColor: theme.white }]}
               resizeMode="contain"
             />
           </TouchableOpacity>

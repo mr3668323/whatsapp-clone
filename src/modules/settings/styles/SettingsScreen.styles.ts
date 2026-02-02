@@ -25,7 +25,7 @@ export const settingsScreenStyles = StyleSheet.create({
   backIcon: {
     width: spacing.lg * 1.2,
     height: spacing.lg * 1.2,
-    tintColor: colors.whatsappGreen,
+    tintColor: colors.textPrimary,
   },
   headerTitle: {
     fontSize: typography.fontSize.xl,
@@ -66,6 +66,11 @@ export const settingsScreenStyles = StyleSheet.create({
     fontSize: typography.fontSize.lg,
     fontFamily: typography.fontFamily.regular,
     color: colors.whatsappBlue,
+    marginRight: spacing.sm,
+  },
+  metaLogoImage: {
+    width: spacing.iconSize,
+    height: spacing.iconSize,
     marginRight: spacing.sm,
   },
   metaTitle: {

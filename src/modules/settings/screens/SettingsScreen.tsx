@@ -15,47 +15,49 @@ import { MetaAppIcon } from '../components/MetaAppIcon';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../../types/navigation';
+import { useTheme } from '../../../contexts/ThemeContext';
 
 type SettingsScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export const SettingsScreen: React.FC = () => {
   const navigation = useNavigation<SettingsScreenNavigationProp>();
+  const { theme, isDark } = useTheme();
 
   const settingsItems = [
     {
       section: null,
       items: [
-        { id: '1', title: 'Account', subtitle: 'Security notifications, change number', icon: '🔐' },
-        { id: '2', title: 'Privacy', subtitle: 'Block contacts, disappearing messages', icon: '🔒' },
-        { id: '3', title: 'Avatar', subtitle: 'Create, edit, profile photo', icon: '👤' },
-        { id: '4', title: 'Lists', subtitle: 'Manage people and groups', icon: '📋' },
-        { id: '5', title: 'Chats', subtitle: 'Theme, wallpapers, chat history', icon: '💬' },
-        { id: '6', title: 'Broadcasts', subtitle: 'Manage lists and send broadcasts', icon: '📢' },
-        { id: '7', title: 'Notifications', subtitle: 'Message, group & call tones', icon: '🔔' },
+        { id: '1', title: 'Account', subtitle: 'Security notifications, change number', iconSource: require('../../../assets/icons/accountSetting.png') },
+        { id: '2', title: 'Privacy', subtitle: 'Block contacts, disappearing messages', iconSource: require('../../../assets/icons/privacySetting.png') },
+        { id: '3', title: 'Avatar', subtitle: 'Create, edit, profile photo', iconSource: require('../../../assets/icons/AvatarSetting.png') },
+        { id: '4', title: 'Lists', subtitle: 'Manage people and groups', iconSource: require('../../../assets/icons/ListsSetting.png') },
+        { id: '5', title: 'Chats', subtitle: 'Theme, wallpapers, chat history', iconSource: require('../../../assets/icons/whatsapp-chat.png') },
+        { id: '6', title: 'Broadcasts', subtitle: 'Manage lists and send broadcasts', iconSource: require('../../../assets/icons/broadcastSetting.png') },
+        { id: '7', title: 'Notifications', subtitle: 'Message, group & call tones', iconSource: require('../../../assets/icons/notificationSetting.png') },
       ],
     },
     {
       section: null,
       items: [
-        { id: '8', title: 'Storage and data', subtitle: 'Network usage, auto-download', icon: '📦' },
-        { id: '9', title: 'Accessibility', subtitle: 'Increase contrast, animation', icon: '♿' },
-        { id: '10', title: 'App language', subtitle: 'English (device\'s language)', icon: '🌐' },
+        { id: '8', title: 'Storage and data', subtitle: 'Network usage, auto-download', iconSource: require('../../../assets/icons/StorageDataSetting.png') },
+        { id: '9', title: 'Accessibility', subtitle: 'Increase contrast, animation', iconSource: require('../../../assets/icons/accessibilitySetting.png') },
+        { id: '10', title: 'App language', subtitle: 'English (device\'s language)', iconSource: require('../../../assets/icons/AppLanguageSetting.png') },
       ],
     },
     {
       section: null,
       items: [
-        { id: '11', title: 'Help and feedback', subtitle: 'Help center, contact us, privacy policy', icon: '❓' },
-        { id: '12', title: 'Invite a friend', icon: '👥' },
+        { id: '11', title: 'Help and feedback', subtitle: 'Help center, contact us, privacy policy', iconSource: require('../../../assets/icons/HelpAndFeedbackSetting.png') },
+        { id: '12', title: 'Invite a friend', iconSource: require('../../../assets/icons/InviteFriendSetting.png') },
       ],
     },
   ];
 
   const metaApps = [
-    { id: '1', name: 'Meta AI', icon: '⭕' },
-    { id: '2', name: 'Instagram', icon: '📷' },
-    { id: '3', name: 'Facebook', icon: 'f' },
-    { id: '4', name: 'Threads', icon: '𝓣' },
+    { id: '1', name: 'Meta AI', iconSource: require('../../../assets/icons/MetaCircleSetting.png') },
+    { id: '2', name: 'Instagram', iconSource: require('../../../assets/icons/instagramSetting.png') },
+    { id: '3', name: 'Facebook', iconSource: require('../../../assets/icons/facebookSetting.png') },
+    { id: '4', name: 'Threads', iconSource: require('../../../assets/icons/threadsSetting.png') },
   ];
 
   const handleBackPress = () => {
@@ -63,35 +65,39 @@ export const SettingsScreen: React.FC = () => {
   };
 
   const handleItemPress = (title: string) => {
-    console.log(`Pressed: ${title}`);
-    // Navigation logic will go here
+    if (title === 'Chats') {
+      navigation.navigate('ChatsSettings');
+    } else {
+      console.log(`Pressed: ${title}`);
+      // Navigation logic will go here
+    }
   };
 
   return (
-    <SafeAreaView style={settingsScreenStyles.container}>
+    <SafeAreaView style={[settingsScreenStyles.container, { backgroundColor: theme.background }]}>
       {/* Header */}
-      <View style={settingsScreenStyles.header}>
+      <View style={[settingsScreenStyles.header, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
         <TouchableOpacity onPress={handleBackPress} style={settingsScreenStyles.backButton}>
           <Image
             source={require('../../../assets/icons/back.png')}
-            style={settingsScreenStyles.backIcon}
+            style={[settingsScreenStyles.backIcon, { tintColor: theme.textPrimary }]}
             resizeMode="contain"
           />
         </TouchableOpacity>
         
-        <Text style={settingsScreenStyles.headerTitle}>Settings</Text>
+        <Text style={[settingsScreenStyles.headerTitle, { color: theme.textPrimary }]}>Settings</Text>
         
         <TouchableOpacity style={settingsScreenStyles.searchButton}>
           <Image
             source={require('../../../assets/icons/search.png')}
-            style={settingsScreenStyles.searchIcon}
+            style={[settingsScreenStyles.searchIcon, { tintColor: theme.iconGray }]}
             resizeMode="contain"
           />
         </TouchableOpacity>
       </View>
 
       <ScrollView 
-        style={settingsScreenStyles.scrollView}
+        style={[settingsScreenStyles.scrollView, { backgroundColor: theme.backgroundLight }]}
         contentContainerStyle={settingsScreenStyles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
@@ -104,7 +110,7 @@ export const SettingsScreen: React.FC = () => {
             {section.items.map((item) => (
               <SettingsItem
                 key={item.id}
-                icon={item.icon}
+                iconSource={item.iconSource}
                 title={item.title}
                 subtitle={item.subtitle}
                 onPress={() => handleItemPress(item.title)}
@@ -114,34 +120,38 @@ export const SettingsScreen: React.FC = () => {
         ))}
 
         {/* Meta Section */}
-        <View style={settingsScreenStyles.metaSection}>
+        <View style={[settingsScreenStyles.metaSection, { backgroundColor: theme.background, borderTopColor: theme.border, borderBottomColor: theme.border }]}>
           <View style={settingsScreenStyles.metaHeader}>
-            <Text style={settingsScreenStyles.metaLogo}>∞</Text>
-            <Text style={settingsScreenStyles.metaTitle}>Meta</Text>
+            <Image
+              source={require('../../../assets/icons/MetaSetting.png')}
+              style={[settingsScreenStyles.metaLogoImage, { tintColor: isDark ? theme.iconGray : theme.textPrimary }]}
+              resizeMode="contain"
+            />
+            <Text style={[settingsScreenStyles.metaTitle, { color: theme.textPrimary }]}>Meta</Text>
           </View>
           
           <TouchableOpacity 
-            style={settingsScreenStyles.metaCard}
+            style={[settingsScreenStyles.metaCard, { borderTopColor: theme.border }]}
             onPress={() => handleItemPress('Accounts Centre')}
           >
             <View style={settingsScreenStyles.metaCardContent}>
-              <Text style={settingsScreenStyles.metaCardTitle}>Accounts Centre</Text>
-              <Text style={settingsScreenStyles.metaCardDescription}>
+              <Text style={[settingsScreenStyles.metaCardTitle, { color: theme.textPrimary }]}>Accounts Centre</Text>
+              <Text style={[settingsScreenStyles.metaCardDescription, { color: theme.textSecondary }]}>
                 Control your experience across WhatsApp, Facebook, Instagram and more.
               </Text>
             </View>
-            <Text style={settingsScreenStyles.chevronIcon}>›</Text>
+            <Text style={[settingsScreenStyles.chevronIcon, { color: theme.textTertiary }]}>›</Text>
           </TouchableOpacity>
         </View>
 
         {/* Also from Meta */}
         <SectionHeader title="Also from Meta" marginTop={0} />
-        <View style={settingsScreenStyles.alsoFromMetaSection}>
+        <View style={[settingsScreenStyles.alsoFromMetaSection, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
           <View style={settingsScreenStyles.metaAppsRow}>
             {metaApps.map((app) => (
               <MetaAppIcon
                 key={app.id}
-                icon={app.icon}
+                iconSource={app.iconSource}
                 name={app.name}
                 onPress={() => handleItemPress(app.name)}
               />

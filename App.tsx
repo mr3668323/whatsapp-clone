@@ -135,6 +135,26 @@ try {
 }
 
 import { ErrorBoundary } from './src/components/common/ErrorBoundary';
+import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
+
+// Component to handle StatusBar based on theme
+const AppContent: React.FC = () => {
+  const { theme, resolvedTheme } = useTheme();
+
+  return (
+    <>
+      <StatusBar 
+        barStyle={resolvedTheme === 'dark' ? 'light-content' : 'dark-content'} 
+        backgroundColor={theme.background} 
+      />
+      <AuthProvider>
+        <NavigationContainer>
+          <AppNavigator />
+        </NavigationContainer>
+      </AuthProvider>
+    </>
+  );
+};
 
 function App(): React.JSX.Element {
   // Native splash screen is shown by MainActivity.onCreate() and onResume()
@@ -144,12 +164,9 @@ function App(): React.JSX.Element {
     <ErrorBoundary>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaProvider>
-          <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
-          <AuthProvider>
-            <NavigationContainer>
-              <AppNavigator />
-            </NavigationContainer>
-          </AuthProvider>
+          <ThemeProvider>
+            <AppContent />
+          </ThemeProvider>
         </SafeAreaProvider>
       </GestureHandlerRootView>
     </ErrorBoundary>

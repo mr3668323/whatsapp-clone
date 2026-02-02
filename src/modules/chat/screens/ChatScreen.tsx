@@ -19,7 +19,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRoute, useNavigation } from '@react-navigation/native';
 
 import { chatScreenStyles } from '../styles/ChatScreen.styles';
-import { colors } from '../../../styles/colors';
+import { useTheme } from '../../../contexts/ThemeContext';
 import { spacing } from '../../../styles/spacing';
 import { DateSeparator } from '../../../components/chat/DateSeparator';
 import { formatMessageTime, formatDateSeparator, timestampToDate, isSameDay } from '../../../utils/dateUtils';
@@ -38,6 +38,7 @@ type RouteParams = {
 export const ChatScreen = () => {
     const route = useRoute<any>();
     const navigation = useNavigation();
+    const { theme, isDark } = useTheme();
     let { chatId, chatName } = route.params as RouteParams;
     
     // Treat both the initial frontend chatId ('meta_ai_chat') and the
@@ -942,16 +943,18 @@ export const ChatScreen = () => {
                     <View
                         style={[
                             chatScreenStyles.messageBubble,
-                            isMe ? chatScreenStyles.myMessage : chatScreenStyles.otherMessage,
+                            isMe 
+                                ? [chatScreenStyles.myMessage, { backgroundColor: theme.bubbleSent }]
+                                : [chatScreenStyles.otherMessage, { backgroundColor: theme.bubbleReceived }],
                         ]}
                     >
-                        <Text style={chatScreenStyles.messageText}>
+                        <Text style={[chatScreenStyles.messageText, { color: theme.textPrimary }]}>
                             {item.text}
                         </Text>
                         
                         {/* Timestamp and ticks inside bubble */}
                         <View style={chatScreenStyles.messageFooter}>
-                            <Text style={chatScreenStyles.messageTime}>
+                            <Text style={[chatScreenStyles.messageTime, { color: theme.bubbleTimestamp }]}>
                                 {timeStr}
                             </Text>
                             {isMe && (() => {
@@ -967,7 +970,7 @@ export const ChatScreen = () => {
                                         <Text
                                             style={[
                                                 chatScreenStyles.tickText,
-                                                chatScreenStyles.tickDelivered, // Always gray double tick for Meta AI
+                                                { color: theme.textTertiary }, // Always gray double tick for Meta AI
                                             ]}
                                         >
                                             {'✔✔'}
@@ -1008,7 +1011,7 @@ export const ChatScreen = () => {
                                     <Text
                                         style={[
                                             chatScreenStyles.tickText,
-                                            finalIsSeen ? chatScreenStyles.tickSeen : (isDelivered ? chatScreenStyles.tickDelivered : chatScreenStyles.tickSent),
+                                            { color: finalIsSeen ? theme.whatsappBlue : theme.textTertiary },
                                         ]}
                                     >
                                         {finalIsSeen ? '✔✔' : (isDelivered ? '✔✔' : '✔')}
@@ -1024,16 +1027,16 @@ export const ChatScreen = () => {
 
     /* ==================== UI ==================== */
     return (
-        <SafeAreaView style={chatScreenStyles.container}>
+        <SafeAreaView style={[chatScreenStyles.container, { backgroundColor: theme.chatBackgroundLight }]}>
             {/* Header */}
-            <View style={chatScreenStyles.header}>
+            <View style={[chatScreenStyles.header, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
                 <TouchableOpacity
                     style={chatScreenStyles.backButton}
                     onPress={() => navigation.goBack()}
                 >
                     <Image
                         source={require('../../../assets/icons/back.png')}
-                        style={chatScreenStyles.backIcon}
+                        style={[chatScreenStyles.backIcon, { tintColor: theme.textPrimary }]}
                         resizeMode="contain"
                     />
                 </TouchableOpacity>
@@ -1063,8 +1066,8 @@ export const ChatScreen = () => {
                             } else {
                                 // Show initials avatar
                                 return (
-                                    <View style={chatScreenStyles.avatar}>
-                                        <Text style={chatScreenStyles.avatarText}>
+                                    <View style={[chatScreenStyles.avatar, { backgroundColor: theme.whatsappGreen }]}>
+                                        <Text style={[chatScreenStyles.avatarText, { color: theme.white }]}>
                                             {isSelfChat ? 'M' : (chatName?.charAt(0) || '?')}
                                         </Text>
                                     </View>
@@ -1090,25 +1093,25 @@ export const ChatScreen = () => {
                 >
                     {isMetaAIChat ? (
                         <>
-                            <Text style={chatScreenStyles.headerTitle} numberOfLines={1}>
+                            <Text style={[chatScreenStyles.headerTitle, { color: theme.textPrimary }]} numberOfLines={1}>
                                 Meta AI
                             </Text>
-                            <Text style={chatScreenStyles.headerSubtitle} numberOfLines={1}>
+                            <Text style={[chatScreenStyles.headerSubtitle, { color: theme.textSecondary }]} numberOfLines={1}>
                                 with Llama 4
                             </Text>
                         </>
                     ) : (
                         <>
-                            <Text style={chatScreenStyles.headerTitle} numberOfLines={1}>
+                            <Text style={[chatScreenStyles.headerTitle, { color: theme.textPrimary }]} numberOfLines={1}>
                                 {isSelfChat ? 'My Number (You)' : (chatName || otherUserPhone || 'Unknown')}
                             </Text>
                             {!isSelfChat && otherUserPhone && chatName !== otherUserPhone && (
-                                <Text style={chatScreenStyles.headerSubtitle} numberOfLines={1}>
+                                <Text style={[chatScreenStyles.headerSubtitle, { color: theme.textSecondary }]} numberOfLines={1}>
                                     {otherUserPhone}
                                 </Text>
                             )}
                             {isSelfChat && (
-                                <Text style={chatScreenStyles.headerSubtitle} numberOfLines={1}>
+                                <Text style={[chatScreenStyles.headerSubtitle, { color: theme.textSecondary }]} numberOfLines={1}>
                                     Message yourself
                                 </Text>
                             )}
@@ -1124,7 +1127,7 @@ export const ChatScreen = () => {
                         >
                             <Image
                                 source={require('../../../assets/icons/menu-bar.png')}
-                                style={chatScreenStyles.menuIcon}
+                                style={[chatScreenStyles.menuIcon, { tintColor: theme.textPrimary }]}
                                 resizeMode="contain"
                             />
                         </TouchableOpacity>
@@ -1133,14 +1136,14 @@ export const ChatScreen = () => {
                             <TouchableOpacity style={chatScreenStyles.headerActionButton}>
                                 <Image
                                     source={require('../../../assets/icons/video-call.png')}
-                                    style={chatScreenStyles.headerActionIcon}
+                                    style={[chatScreenStyles.headerActionIcon, { tintColor: theme.textPrimary }]}
                                     resizeMode="contain"
                                 />
                             </TouchableOpacity>
                             <TouchableOpacity style={chatScreenStyles.headerActionButton}>
                                 <Image
                                     source={require('../../../assets/icons/whatsapp-calls.png')}
-                                    style={chatScreenStyles.headerActionIcon}
+                                    style={[chatScreenStyles.headerActionIcon, { tintColor: theme.textPrimary }]}
                                     resizeMode="contain"
                                 />
                             </TouchableOpacity>
@@ -1150,7 +1153,7 @@ export const ChatScreen = () => {
                             >
                                 <Image
                                 source={require('../../../assets/icons/menu-bar.png')}
-                                style={chatScreenStyles.menuIcon}
+                                style={[chatScreenStyles.menuIcon, { tintColor: theme.textPrimary }]}
                                 resizeMode="contain"
                             />
                             </TouchableOpacity>
@@ -1162,9 +1165,10 @@ export const ChatScreen = () => {
             {/* Messages with Background (wallpaper edge-to-edge) */}
             <ImageBackground
                 source={require('../../../assets/images/Wchat-background.jpg')}
-                style={chatScreenStyles.backgroundImage}
+                style={[chatScreenStyles.backgroundImage, { backgroundColor: theme.chatBackgroundLight }]}
                 // Very light wallpaper so icons are subtle, like WhatsApp
-                imageStyle={{ opacity: 0.15 }}
+                // In dark mode, darken the wallpaper significantly
+                imageStyle={{ opacity: isDark ? 0.05 : 0.15 }}
                 resizeMode="cover"
             >
                 {/* Hard gate: do not render any message UI until the first snapshot/cache resolves */}
@@ -1188,9 +1192,9 @@ export const ChatScreen = () => {
                             <>
                                 {/* Encryption banner: one-time header at top of chat (non Meta AI) */}
                                 {!isMetaAIChat && (
-                                    <View style={chatScreenStyles.encryptionBanner}>
+                                    <View style={[chatScreenStyles.encryptionBanner, { backgroundColor: theme.encryptionBanner }]}>
                                         <Text style={chatScreenStyles.encryptionIcon}>🔒</Text>
-                                        <Text style={chatScreenStyles.encryptionText}>
+                                        <Text style={[chatScreenStyles.encryptionText, { color: theme.textSecondary }]}>
                                             Messages and calls are end-to-end encrypted. Only people in this chat can read, listen to, or share them. Learn more.
                                         </Text>
                                     </View>
@@ -1217,9 +1221,9 @@ export const ChatScreen = () => {
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
             >
-                <View style={chatScreenStyles.inputContainer}>
+                <View style={[chatScreenStyles.inputContainer, { backgroundColor: theme.background }]}>
                     {/* Main pill container: sticker + input + attach + camera (WhatsApp-like) */}
-                    <View style={chatScreenStyles.inputWrapper}>
+                    <View style={[chatScreenStyles.inputWrapper, { backgroundColor: theme.backgroundInput }]}>
                         {/* Emoji / keyboard toggle on the left inside the pill (WhatsApp-like) */}
                         <TouchableOpacity
                             style={chatScreenStyles.stickerButton}
@@ -1232,7 +1236,7 @@ export const ChatScreen = () => {
                                         ? require('../../../assets/icons/keyboard.png')
                                         : require('../../../assets/icons/sticker.png')
                                 }
-                                style={chatScreenStyles.stickerIcon}
+                                style={[chatScreenStyles.stickerIcon, { tintColor: theme.iconGray }]}
                                 resizeMode="contain"
                             />
                         </TouchableOpacity>
@@ -1240,9 +1244,9 @@ export const ChatScreen = () => {
                         {/* Text input */}
                         <TextInput
                             ref={inputRef}
-                            style={chatScreenStyles.input}
+                            style={[chatScreenStyles.input, { color: theme.textPrimary }]}
                             placeholder="Message"
-                            placeholderTextColor={colors.textTertiary}
+                            placeholderTextColor={theme.textTertiary}
                             value={text}
                             onFocus={() => {
                                 // When user taps directly into input, default back to text keyboard icon.
@@ -1281,14 +1285,14 @@ export const ChatScreen = () => {
                                 <TouchableOpacity style={chatScreenStyles.attachButton}>
                                     <Image
                                         source={require('../../../assets/icons/attach-document.png')}
-                                        style={chatScreenStyles.attachIcon}
+                                        style={[chatScreenStyles.attachIcon, { tintColor: theme.iconGray }]}
                                         resizeMode="contain"
                                     />
                                 </TouchableOpacity>
                                 <TouchableOpacity style={chatScreenStyles.cameraButton}>
                                     <Image
                                         source={require('../../../assets/icons/whatsapp-camera.png')}
-                                        style={chatScreenStyles.cameraIcon}
+                                        style={[chatScreenStyles.cameraIcon, { tintColor: theme.iconGray }]}
                                         resizeMode="contain"
                                     />
                                 </TouchableOpacity>
@@ -1299,16 +1303,16 @@ export const ChatScreen = () => {
                     {/* Send button or mic button to the right of the pill */}
                     {text.trim() ? (
                         <TouchableOpacity
-                            style={chatScreenStyles.sendButton}
+                            style={[chatScreenStyles.sendButton, { backgroundColor: theme.whatsappGreen }]}
                             onPress={handleSendMessage}
                         >
-                            <Text style={chatScreenStyles.sendIcon}>➤</Text>
+                            <Text style={[chatScreenStyles.sendIcon, { color: theme.white }]}>➤</Text>
                         </TouchableOpacity>
                     ) : (
                         <TouchableOpacity style={chatScreenStyles.micButton}>
                             <Image
                                 source={require('../../../assets/icons/voice-message.png')}
-                                style={chatScreenStyles.micIcon}
+                                style={[chatScreenStyles.micIcon, { tintColor: theme.iconGray }]}
                                 resizeMode="contain"
                             />
                         </TouchableOpacity>

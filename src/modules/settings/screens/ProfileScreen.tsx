@@ -6,6 +6,7 @@ import {
   Text,
   TouchableOpacity,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -13,14 +14,14 @@ import type { RootStackParamList } from '../../../types/navigation';
 import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { colors } from '../../../styles/colors';
-import { spacing } from '../../../styles/spacing';
-import { typography } from '../../../styles/typography';
+import { useTheme } from '../../../contexts/ThemeContext';
+import { profileScreenStyles } from '../styles/ProfileScreen.styles';
 
 type ProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Profile'>;
 
 export const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<ProfileScreenNavigationProp>();
+  const { theme } = useTheme();
   const [phoneNumber, setPhoneNumber] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -47,7 +48,7 @@ export const ProfileScreen: React.FC = () => {
             .doc(user.uid)
             .onSnapshot(
               doc => {
-                if (doc.exists) {
+                if (doc.exists()) {
                   const data = doc.data();
                   if (data?.phoneNumber) {
                     console.log('[ProfileScreen] Phone from Firestore:', data.phoneNumber);
@@ -77,7 +78,7 @@ export const ProfileScreen: React.FC = () => {
             .doc(manualAuthPhone)
             .onSnapshot(
               doc => {
-                if (doc.exists) {
+                if (doc.exists()) {
                   const data = doc.data();
                   if (data?.phoneNumber) {
                     console.log('[ProfileScreen] Phone from Firestore (manual auth):', data.phoneNumber);
@@ -108,7 +109,7 @@ export const ProfileScreen: React.FC = () => {
     loadPhoneNumber();
 
     return () => {
-      if (unsubscribe) {
+      if (unsubscribe !== null) {
         unsubscribe();
       }
     };
@@ -126,203 +127,91 @@ export const ProfileScreen: React.FC = () => {
   // Avatar shows "M" for "My Number"
   const avatarLetter = 'M';
 
-  const profileScreenStyles = {
-    container: {
-      flex: 1,
-      backgroundColor: colors.background,
-    },
-    header: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      paddingHorizontal: spacing.lg,
-      paddingVertical: spacing.md,
-      backgroundColor: colors.white,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.borderLight,
-      paddingTop: spacing.lg,
-    },
-    backButton: {
-      padding: spacing.xs,
-    },
-    backIcon: {
-      width: spacing.lg * 1.2,
-      height: spacing.lg * 1.2,
-      tintColor: colors.whatsappGreen,
-    },
-    headerTitle: {
-      fontSize: typography.fontSize.xl,
-      fontFamily: typography.fontFamily.bold,
-      color: colors.textPrimary,
-      marginLeft: spacing.md,
-    },
-    scrollView: {
-      flex: 1,
-      backgroundColor: colors.backgroundLight,
-    },
-    contentContainer: {
-      paddingBottom: spacing.xl * 2,
-    },
-    avatarSection: {
-      alignItems: 'center' as const,
-      paddingVertical: spacing.xl * 2,
-      backgroundColor: colors.white,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.borderLight,
-    },
-    avatar: {
-      width: spacing.avatarSize * 2,
-      height: spacing.avatarSize * 2,
-      borderRadius: spacing.avatarSize,
-      backgroundColor: colors.whatsappGreen,
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-      marginBottom: spacing.md,
-    },
-    avatarText: {
-      fontSize: typography.fontSize['4xl'],
-      fontFamily: typography.fontFamily.bold,
-      color: colors.white,
-    },
-    editText: {
-      fontSize: typography.fontSize.base,
-      fontFamily: typography.fontFamily.regular,
-      color: colors.whatsappGreen,
-    },
-    profileItem: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      paddingHorizontal: spacing.lg,
-      paddingVertical: spacing.md,
-      backgroundColor: colors.white,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.borderLight,
-    },
-    profileItemIcon: {
-      width: spacing['3xl'],
-      height: spacing['3xl'],
-      borderRadius: spacing.lg,
-      backgroundColor: colors.backgroundGray,
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-      marginRight: spacing.md,
-    },
-    profileItemIconText: {
-      fontSize: typography.fontSize.lg,
-      fontFamily: typography.fontFamily.regular,
-      color: colors.iconGray,
-    },
-    profileItemContent: {
-      flex: 1,
-    },
-    profileItemLabel: {
-      fontSize: typography.fontSize.sm,
-      fontFamily: typography.fontFamily.semibold,
-      color: colors.textPrimary,
-      marginBottom: spacing.xs,
-    },
-    profileItemValue: {
-      fontSize: typography.fontSize.base,
-      fontFamily: typography.fontFamily.regular,
-      color: colors.textSecondary,
-    },
-    profileItemValueLink: {
-      fontSize: typography.fontSize.base,
-      fontFamily: typography.fontFamily.regular,
-      color: colors.whatsappGreen,
-    },
-    loadingContainer: {
-      flex: 1,
-      justifyContent: 'center' as const,
-      alignItems: 'center' as const,
-      backgroundColor: colors.background,
-    },
-  };
-
   if (loading) {
     return (
-      <SafeAreaView style={profileScreenStyles.container}>
-        <View style={profileScreenStyles.header}>
+      <SafeAreaView style={[profileScreenStyles.container, { backgroundColor: theme.background }]}>
+        <View style={[profileScreenStyles.header, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
           <TouchableOpacity onPress={handleBackPress} style={profileScreenStyles.backButton}>
             <Image
               source={require('../../../assets/icons/back.png')}
-              style={profileScreenStyles.backIcon}
+              style={[profileScreenStyles.backIcon, { tintColor: theme.textPrimary }]}
               resizeMode="contain"
             />
           </TouchableOpacity>
-          <Text style={profileScreenStyles.headerTitle}>Profile</Text>
+          <Text style={[profileScreenStyles.headerTitle, { color: theme.textPrimary }]}>Profile</Text>
         </View>
         <View style={profileScreenStyles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.whatsappGreen} />
+          <ActivityIndicator size="large" color={theme.whatsappGreen} />
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={profileScreenStyles.container}>
+    <SafeAreaView style={[profileScreenStyles.container, { backgroundColor: theme.background }]}>
       {/* Header */}
-      <View style={profileScreenStyles.header}>
+      <View style={[profileScreenStyles.header, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
         <TouchableOpacity onPress={handleBackPress} style={profileScreenStyles.backButton}>
           <Image
             source={require('../../../assets/icons/back.png')}
-            style={profileScreenStyles.backIcon}
+            style={[profileScreenStyles.backIcon, { tintColor: theme.textPrimary }]}
             resizeMode="contain"
           />
         </TouchableOpacity>
-        <Text style={profileScreenStyles.headerTitle}>Profile</Text>
+        <Text style={[profileScreenStyles.headerTitle, { color: theme.textPrimary }]}>Profile</Text>
       </View>
 
       <ScrollView
-        style={profileScreenStyles.scrollView}
+        style={[profileScreenStyles.scrollView, { backgroundColor: theme.backgroundLight }]}
         contentContainerStyle={profileScreenStyles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
         {/* Avatar Section */}
         <View style={profileScreenStyles.avatarSection}>
-          <View style={profileScreenStyles.avatar}>
-            <Text style={profileScreenStyles.avatarText}>{avatarLetter}</Text>
+          <View style={[profileScreenStyles.avatar, { backgroundColor: theme.whatsappGreen }]}>
+            <Text style={[profileScreenStyles.avatarText, { color: theme.white }]}>{avatarLetter}</Text>
           </View>
-          <Text style={profileScreenStyles.editText}>Edit</Text>
+          <Text style={[profileScreenStyles.editText, { color: theme.whatsappGreen }]}>Edit</Text>
         </View>
 
         {/* Profile Items */}
-        <View style={profileScreenStyles.profileItem}>
+        <View style={[profileScreenStyles.profileItem, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
           <View style={profileScreenStyles.profileItemIcon}>
             <Text style={profileScreenStyles.profileItemIconText}>👤</Text>
           </View>
           <View style={profileScreenStyles.profileItemContent}>
-            <Text style={profileScreenStyles.profileItemLabel}>Name</Text>
-            <Text style={profileScreenStyles.profileItemValue}>{displayName}</Text>
+            <Text style={[profileScreenStyles.profileItemLabel, { color: theme.textSecondary }]}>Name</Text>
+            <Text style={[profileScreenStyles.profileItemValue, { color: theme.textPrimary }]}>{displayName}</Text>
           </View>
         </View>
 
-        <View style={profileScreenStyles.profileItem}>
+        <View style={[profileScreenStyles.profileItem, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
           <View style={profileScreenStyles.profileItemIcon}>
             <Text style={profileScreenStyles.profileItemIconText}>ℹ️</Text>
           </View>
           <View style={profileScreenStyles.profileItemContent}>
-            <Text style={profileScreenStyles.profileItemLabel}>About</Text>
-            <Text style={profileScreenStyles.profileItemValueLink}>{displayAbout}</Text>
+            <Text style={[profileScreenStyles.profileItemLabel, { color: theme.textSecondary }]}>About</Text>
+            <Text style={[profileScreenStyles.profileItemValueLink, { color: theme.textPrimary }]}>{displayAbout}</Text>
           </View>
         </View>
 
-        <View style={profileScreenStyles.profileItem}>
+        <View style={[profileScreenStyles.profileItem, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
           <View style={profileScreenStyles.profileItemIcon}>
             <Text style={profileScreenStyles.profileItemIconText}>📞</Text>
           </View>
           <View style={profileScreenStyles.profileItemContent}>
-            <Text style={profileScreenStyles.profileItemLabel}>Phone</Text>
-            <Text style={profileScreenStyles.profileItemValue}>{displayPhone}</Text>
+            <Text style={[profileScreenStyles.profileItemLabel, { color: theme.textSecondary }]}>Phone</Text>
+            <Text style={[profileScreenStyles.profileItemValue, { color: theme.textPrimary }]}>{displayPhone}</Text>
           </View>
         </View>
 
-        <View style={profileScreenStyles.profileItem}>
+        <View style={[profileScreenStyles.profileItem, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
           <View style={profileScreenStyles.profileItemIcon}>
             <Text style={profileScreenStyles.profileItemIconText}>🔗</Text>
           </View>
           <View style={profileScreenStyles.profileItemContent}>
-            <Text style={profileScreenStyles.profileItemLabel}>Links</Text>
-            <Text style={profileScreenStyles.profileItemValueLink}>Add links</Text>
+            <Text style={[profileScreenStyles.profileItemLabel, { color: theme.textSecondary }]}>Links</Text>
+            <Text style={[profileScreenStyles.profileItemValueLink, { color: theme.textPrimary }]}>Add links</Text>
           </View>
         </View>
       </ScrollView>

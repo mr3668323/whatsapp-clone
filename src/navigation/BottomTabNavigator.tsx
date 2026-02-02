@@ -5,7 +5,7 @@ import { HomeScreen } from "../modules/home/screens/HomeScreen"
 import { UpdatesScreen } from "../modules/updates/screens/UpdatesScreen"
 import { CallsScreen } from "../modules/calls/screens/CallsScreen"
 import { CommunitiesScreen } from "../modules/communities/screens/CommunitiesScreen"
-import { colors } from "../styles/colors"
+import { useTheme } from "../contexts/ThemeContext"
 import { bottomTabNavigatorStyles } from "./styles/BottomTabNavigator.styles"
 import type { BottomTabParamList } from "../types/navigation"
 
@@ -14,16 +14,17 @@ const Tab = createBottomTabNavigator<BottomTabParamList>()
 interface TabIconProps {
     name: string
     focused: boolean
+    theme: any
 }
 
-const TabIcon: React.FC<TabIconProps> = ({ name, focused }) => {
+const TabIcon: React.FC<TabIconProps> = ({ name, focused, theme }) => {
     return (
         <View style={bottomTabNavigatorStyles.tabIconContainer}>
             <View
                 style={[
                     bottomTabNavigatorStyles.tabIconWrapper,
                     {
-                        backgroundColor: focused ? colors.whatsappGreen : 'transparent',
+                        backgroundColor: focused ? theme.whatsappGreen : 'transparent',
                     },
                 ]}
             >
@@ -37,7 +38,7 @@ const TabIcon: React.FC<TabIconProps> = ({ name, focused }) => {
                             ? require("../assets/icons/whatsapp-communities.png")
                             : require("../assets/icons/whatsapp-calls.png")
                     }
-                    style={bottomTabNavigatorStyles.tabIconEmoji}
+                    style={[bottomTabNavigatorStyles.tabIconEmoji, { tintColor: focused ? theme.white : theme.iconGray }]}
                     resizeMode="contain"
                 />
             </View>
@@ -46,7 +47,7 @@ const TabIcon: React.FC<TabIconProps> = ({ name, focused }) => {
                     bottomTabNavigatorStyles.tabLabel,
                     focused ? bottomTabNavigatorStyles.tabLabelFocused : bottomTabNavigatorStyles.tabLabelUnfocused,
                     {
-                        color: focused ? colors.textPrimary : colors.textTertiary,
+                        color: focused ? theme.textPrimary : theme.textTertiary,
                     },
                 ]}
             >
@@ -57,13 +58,15 @@ const TabIcon: React.FC<TabIconProps> = ({ name, focused }) => {
 }
 
 export const BottomTabNavigator: React.FC = () => {
+    const { theme } = useTheme();
+    
     return (
         <Tab.Navigator
             initialRouteName="Chats"
             screenOptions={({ route }) => ({
                 headerShown: false,
-                tabBarStyle: bottomTabNavigatorStyles.tabBarStyle,
-                tabBarIcon: ({ focused }) => <TabIcon name={route.name} focused={focused} />,
+                tabBarStyle: [bottomTabNavigatorStyles.tabBarStyle, { backgroundColor: theme.background, borderTopColor: theme.border }],
+                tabBarIcon: ({ focused }) => <TabIcon name={route.name} focused={focused} theme={theme} />,
                 tabBarLabel: () => null,
             })}
         >

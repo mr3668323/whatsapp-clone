@@ -17,13 +17,11 @@ import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { homeScreenStyles } from '../styles/HomeScreen.styles';
-import { colors } from '../../../styles/colors';
+import { useTheme } from '../../../contexts/ThemeContext';
 import type { RootStackParamList } from '../../../types/navigation';
 import { MenuBar } from '../components/MenuBar';
 import { getUserData } from '../../../services/userService';
 import { MetaAIAvatar } from '../../../components/chat/MetaAIAvatar';
-
-// 🔔 ADD THIS IMPORT
 import { registerForPushNotifications } from '../../../services/notificationService';
 
 /* -------------------- Navigation Type -------------------- */
@@ -39,11 +37,13 @@ const ChatItem = React.memo(
     currentUserUid,
     onPress,
     formatTime,
+    theme,
   }: {
     chat: any;
     currentUserUid: string;
     onPress: () => void;
     formatTime: (timestamp: any) => string;
+    theme: any;
   }) => {
     const unread = chat.unreadCount?.[currentUserUid] || 0;
     
@@ -79,19 +79,19 @@ const ChatItem = React.memo(
       
       if (isSeen || isSelfChat) {
         // Blue double tick (seen by other user)
-        return <Text style={homeScreenStyles.tickSeen}>✔✔</Text>;
+        return <Text style={[homeScreenStyles.tickSeen, { color: theme.whatsappBlue }]}>✔✔</Text>;
       } else if (isDelivered) {
         // Grey double tick (delivered)
-        return <Text style={homeScreenStyles.tickDelivered}>✔✔</Text>;
+        return <Text style={[homeScreenStyles.tickDelivered, { color: theme.textTertiary }]}>✔✔</Text>;
       } else {
         // Single tick (sent)
-        return <Text style={homeScreenStyles.tickSent}>✔</Text>;
+        return <Text style={[homeScreenStyles.tickSent, { color: theme.textTertiary }]}>✔</Text>;
       }
     };
 
     return (
       <TouchableOpacity
-        style={homeScreenStyles.chatItem}
+        style={[homeScreenStyles.chatItem, { backgroundColor: theme.background, borderBottomColor: theme.border }]}
         onPress={onPress}
         activeOpacity={0.7}
       >
@@ -120,8 +120,8 @@ const ChatItem = React.memo(
               } else {
                 // Show initials avatar
                 return (
-                  <View style={homeScreenStyles.regularAvatar}>
-                    <Text style={homeScreenStyles.avatarText}>
+                  <View style={[homeScreenStyles.regularAvatar, { backgroundColor: theme.whatsappGreen }]}>
+                    <Text style={[homeScreenStyles.avatarText, { color: theme.white }]}>
                       {isSelfChat ? 'M' : (chat.otherUserName?.charAt(0) || '?')}
                     </Text>
                   </View>
@@ -135,18 +135,18 @@ const ChatItem = React.memo(
         {/* Chat Info */}
         <View style={homeScreenStyles.chatInfo}>
           <View style={homeScreenStyles.chatHeader}>
-            <Text style={homeScreenStyles.chatName} numberOfLines={1}>
+            <Text style={[homeScreenStyles.chatName, { color: theme.textPrimary }]} numberOfLines={1}>
               {chat.isMetaAI ? 'Meta AI' : (isSelfChat ? 'My Number (You)' : (chat.otherUserName || 'Unknown'))}
             </Text>
             {lastMessageTime && (
-              <Text style={homeScreenStyles.chatTime}>
+              <Text style={[homeScreenStyles.chatTime, { color: theme.textTertiary }]}>
                 {formatTime(lastMessageTime)}
               </Text>
             )}
           </View>
 
           <View style={homeScreenStyles.messagePreview}>
-            <Text style={homeScreenStyles.messageText} numberOfLines={1}>
+            <Text style={[homeScreenStyles.messageText, { color: theme.textSecondary }]} numberOfLines={1}>
               {lastMessageText}
             </Text>
             {renderTicks()}
@@ -155,8 +155,8 @@ const ChatItem = React.memo(
 
         {/* Unread Badge */}
         {unread > 0 && (
-          <View style={homeScreenStyles.unreadBadge}>
-            <Text style={homeScreenStyles.unreadCount}>{unread}</Text>
+          <View style={[homeScreenStyles.unreadBadge, { backgroundColor: theme.unreadBadge }]}>
+            <Text style={[homeScreenStyles.unreadCount, { color: theme.white }]}>{unread}</Text>
           </View>
         )}
       </TouchableOpacity>
@@ -165,11 +165,11 @@ const ChatItem = React.memo(
 );
 
 /* -------------------- Encryption Notice -------------------- */
-const EncryptionNotice = () => (
-  <View style={homeScreenStyles.encryptionNotice}>
-    <Text style={homeScreenStyles.encryptionText}>
+const EncryptionNotice = ({ theme }: { theme: any }) => (
+  <View style={[homeScreenStyles.encryptionNotice, { backgroundColor: theme.background, borderTopColor: theme.border }]}>
+    <Text style={[homeScreenStyles.encryptionText, { color: theme.textSecondary }]}>
       🔒 Your personal messages are{' '}
-      <Text style={homeScreenStyles.encryptionHighlight}>
+      <Text style={[homeScreenStyles.encryptionHighlight, { color: theme.whatsappGreen }]}>
         end-to-end encrypted
       </Text>
     </Text>
@@ -179,6 +179,7 @@ const EncryptionNotice = () => (
 /* ==================== HomeScreen ==================== */
 export const HomeScreen = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
+  const { theme, isDark } = useTheme();
 
   const [chatRooms, setChatRooms] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -508,17 +509,17 @@ export const HomeScreen = () => {
 
   /* -------------------- UI -------------------- */
   return (
-    <SafeAreaView style={homeScreenStyles.container}>
+    <SafeAreaView style={[homeScreenStyles.container, { backgroundColor: theme.background }]}>
       <MenuBar visible={menuVisible} onClose={() => setMenuVisible(false)} />
 
       {/* Header */}
-      <View style={homeScreenStyles.header}>
-        <Text style={homeScreenStyles.headerTitle}>WhatsApp</Text>
+      <View style={[homeScreenStyles.header, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
+        <Text style={[homeScreenStyles.headerTitle, { color: isDark ? theme.textPrimary : theme.whatsappGreen }]}>WhatsApp</Text>
         <View style={homeScreenStyles.headerActions}>
           <TouchableOpacity style={homeScreenStyles.headerButton}>
             <Image
               source={require('../../../assets/icons/whatsapp-camera.png')}
-              style={homeScreenStyles.cameraIcon}
+              style={[homeScreenStyles.cameraIcon, { tintColor: theme.textPrimary }]}
               resizeMode="contain"
             />
           </TouchableOpacity>
@@ -528,7 +529,7 @@ export const HomeScreen = () => {
           >
             <Image
               source={require('../../../assets/icons/menu-bar.png')}
-              style={homeScreenStyles.moreIcon}
+              style={[homeScreenStyles.moreIcon, { tintColor: theme.textPrimary }]}
               resizeMode="contain"
             />
           </TouchableOpacity>
@@ -536,17 +537,17 @@ export const HomeScreen = () => {
       </View>
 
       {/* Search */}
-      <View style={homeScreenStyles.searchContainer}>
-        <View style={homeScreenStyles.searchInputWrapper}>
+      <View style={[homeScreenStyles.searchContainer, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
+        <View style={[homeScreenStyles.searchInputWrapper, { backgroundColor: theme.searchBackground }]}>
           <Image
             source={require('../../../assets/icons/search.png')}
-            style={homeScreenStyles.searchIcon}
+            style={[homeScreenStyles.searchIcon, { tintColor: theme.iconGray }]}
             resizeMode="contain"
           />
           <TextInput
-            style={homeScreenStyles.searchInput}
+            style={[homeScreenStyles.searchInput, { color: theme.searchText }]}
             placeholder="Ask Meta AI or Search"
-            placeholderTextColor={colors.searchPlaceholder}
+            placeholderTextColor={theme.searchPlaceholder}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
@@ -554,15 +555,15 @@ export const HomeScreen = () => {
       </View>
 
       {/* Chat List */}
-      <ScrollView style={homeScreenStyles.chatList}>
+      <ScrollView style={[homeScreenStyles.chatList, { backgroundColor: theme.background }]}>
         {filteredChats.length === 0 ? (
           <>
             <View style={homeScreenStyles.placeholderView}>
-              <Text style={homeScreenStyles.placeholderText}>
+              <Text style={[homeScreenStyles.placeholderText, { color: theme.textSecondary }]}>
                 No chats available
               </Text>
             </View>
-            <EncryptionNotice />
+            <EncryptionNotice theme={theme} />
           </>
         ) : (
           <>
@@ -573,9 +574,10 @@ export const HomeScreen = () => {
                 currentUserUid={currentUserUid || ''}
                 onPress={() => handleChatPress(chat.id, chat)}
                 formatTime={formatTime}
+                theme={theme}
               />
             ))}
-            <EncryptionNotice />
+            <EncryptionNotice theme={theme} />
           </>
         )}
       </ScrollView>
@@ -596,10 +598,10 @@ export const HomeScreen = () => {
         
         {/* New Chat Button */}
         <TouchableOpacity
-          style={homeScreenStyles.chatFab}
+          style={[homeScreenStyles.chatFab, { backgroundColor: theme.floatingButton }]}
           onPress={() => navigation.navigate('NewChat')}
         >
-          <Text style={homeScreenStyles.plusIcon}>+</Text>
+          <Text style={[homeScreenStyles.plusIcon, { color: theme.white }]}>+</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

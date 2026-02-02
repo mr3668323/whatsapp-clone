@@ -7,6 +7,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { chatMenuStyles } from '../../modules/chat/styles/ChatMenu.styles';
+import { useTheme } from '../../contexts/ThemeContext';
 
 type ChatMenuProps = {
   visible: boolean;
@@ -15,6 +16,8 @@ type ChatMenuProps = {
 };
 
 export const ChatMenu: React.FC<ChatMenuProps> = ({ visible, onClose, onDeleteChat }) => {
+  const { theme } = useTheme();
+  
   const handleDeletePress = () => {
     onClose();
     onDeleteChat();
@@ -28,19 +31,19 @@ export const ChatMenu: React.FC<ChatMenuProps> = ({ visible, onClose, onDeleteCh
       onRequestClose={onClose}
     >
       <TouchableOpacity
-        style={chatMenuStyles.overlay}
+        style={[chatMenuStyles.overlay, { backgroundColor: 'transparent' }]}
         activeOpacity={1}
         onPress={onClose}
       >
-        <View style={chatMenuStyles.menuContainer} onStartShouldSetResponder={() => true}>
-          <SafeAreaView style={chatMenuStyles.safeArea}>
+        <View style={[chatMenuStyles.menuContainer, { backgroundColor: theme.background, borderColor: theme.border }]} onStartShouldSetResponder={() => true}>
+          <SafeAreaView style={[chatMenuStyles.safeArea, { backgroundColor: theme.background }]}>
             <View style={chatMenuStyles.menuContent}>
               <TouchableOpacity
                 style={chatMenuStyles.menuItem}
                 onPress={handleDeletePress}
                 activeOpacity={0.7}
               >
-                <Text style={chatMenuStyles.menuText}>Delete chat</Text>
+                <Text style={[chatMenuStyles.menuText, { color: theme.textPrimary }]}>Delete chat</Text>
               </TouchableOpacity>
             </View>
           </SafeAreaView>

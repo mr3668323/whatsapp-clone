@@ -16,7 +16,7 @@ import firestore from '@react-native-firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 
-import { colors } from '../../../styles/colors';
+import { useTheme } from '../../../contexts/ThemeContext';
 import { spacing } from '../../../styles/spacing';
 import { typography } from '../../../styles/typography';
 import { newChatScreenStyles } from '../styles/NewChatScreen.styles';
@@ -34,6 +34,7 @@ interface DisplayContact extends WhatsAppContact {
 
 export const NewChatScreen: React.FC = () => {
   const navigation = useNavigation<NewChatNavigation>();
+  const { theme, isDark } = useTheme();
   const [currentUserUid, setCurrentUserUid] = useState<string | null>(null);
   const [currentUserPhone, setCurrentUserPhone] = useState<string | null>(null);
 
@@ -415,7 +416,7 @@ export const NewChatScreen: React.FC = () => {
   const renderContact = ({ item }: { item: DisplayContact }) => {
     return (
       <TouchableOpacity
-        style={newChatScreenStyles.contactItem}
+        style={[newChatScreenStyles.contactItem, { backgroundColor: theme.background, borderBottomColor: theme.border }]}
         onPress={() =>
           handleOpenChat({
             uid: item.uid,
@@ -424,7 +425,7 @@ export const NewChatScreen: React.FC = () => {
           })
         }
       >
-        <View style={newChatScreenStyles.contactAvatar}>
+        <View style={[newChatScreenStyles.contactAvatar, { backgroundColor: theme.whatsappGreen }]}>
           {(() => {
             // Check if user is unknown (name is phone number or missing)
             const isUnknownUser = !item.isSelf && (
@@ -443,7 +444,7 @@ export const NewChatScreen: React.FC = () => {
               );
             } else {
               return (
-                <Text style={newChatScreenStyles.contactAvatarText}>
+                <Text style={[newChatScreenStyles.contactAvatarText, { color: theme.white }]}>
                   {item.isSelf ? 'M' : (item.name || item.phoneNumber)[0]?.toUpperCase()}
                 </Text>
               );
@@ -452,10 +453,10 @@ export const NewChatScreen: React.FC = () => {
         </View>
 
         <View style={newChatScreenStyles.contactInfo}>
-          <Text style={newChatScreenStyles.contactName}>
+          <Text style={[newChatScreenStyles.contactName, { color: theme.textPrimary }]}>
             {item.name}
           </Text>
-          <Text style={newChatScreenStyles.contactSubtitle}>
+          <Text style={[newChatScreenStyles.contactSubtitle, { color: theme.textSecondary }]}>
             {item.isSelf ? 'Message yourself' : item.phoneNumber}
           </Text>
         </View>
@@ -468,11 +469,11 @@ export const NewChatScreen: React.FC = () => {
   }, [search]);
 
   return (
-    <SafeAreaView style={newChatScreenStyles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+    <SafeAreaView style={[newChatScreenStyles.container, { backgroundColor: theme.background }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.background} />
       
       {/* Header with back button */}
-      <View style={newChatScreenStyles.header}>
+      <View style={[newChatScreenStyles.header, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={newChatScreenStyles.backButton}
@@ -480,26 +481,26 @@ export const NewChatScreen: React.FC = () => {
         >
           <Image
             source={require('../../../assets/icons/back.png')}
-            style={newChatScreenStyles.backIcon}
+            style={[newChatScreenStyles.backIcon, { tintColor: theme.textPrimary }]}
             resizeMode="contain"
           />
         </TouchableOpacity>
         
-        <Text style={newChatScreenStyles.headerTitle}>
+        <Text style={[newChatScreenStyles.headerTitle, { color: theme.textPrimary }]}>
           New chat
         </Text>
       </View>
 
       {/* Search bar */}
-      <View style={newChatScreenStyles.searchContainer}>
-        <View style={newChatScreenStyles.searchInputContainer}>
+      <View style={[newChatScreenStyles.searchContainer, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
+        <View style={[newChatScreenStyles.searchInputContainer, { backgroundColor: theme.searchBackground }]}>
           <TextInput
             placeholder="Search name or number"
-            placeholderTextColor={colors.textSecondary}
+            placeholderTextColor={theme.textSecondary}
             value={search}
             onChangeText={setSearch}
             keyboardType="default"
-            style={newChatScreenStyles.searchInput}
+            style={[newChatScreenStyles.searchInput, { color: theme.searchText }]}
           />
         </View>
       </View>
@@ -569,8 +570,8 @@ export const NewChatScreen: React.FC = () => {
           {renderContact({ item: selfContact })}
           {loadingContacts && (
             <View style={newChatScreenStyles.emptyStateContainer}>
-              <ActivityIndicator size="small" color={colors.whatsappGreen} />
-              <Text style={newChatScreenStyles.loadingText}>
+              <ActivityIndicator size="small" color={theme.whatsappGreen} />
+              <Text style={[newChatScreenStyles.loadingText, { color: theme.textSecondary }]}>
                 Loading contacts...
               </Text>
             </View>
@@ -584,8 +585,8 @@ export const NewChatScreen: React.FC = () => {
           ListEmptyComponent={
             loadingContacts ? (
               <View style={newChatScreenStyles.loadingContainer}>
-                <ActivityIndicator size="small" color={colors.whatsappGreen} />
-                <Text style={newChatScreenStyles.loadingText}>
+                <ActivityIndicator size="small" color={theme.whatsappGreen} />
+                <Text style={[newChatScreenStyles.loadingText, { color: theme.textSecondary }]}>
                   Loading contacts...
                 </Text>
               </View>

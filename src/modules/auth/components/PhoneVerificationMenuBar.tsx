@@ -8,6 +8,7 @@ import {
   Linking,
 } from 'react-native';
 import { phoneVerificationMenuBarStyles } from '../styles/PhoneVerificationMenuBar.styles';
+import { useTheme } from '../../../contexts/ThemeContext';
 
 type PhoneVerificationMenuBarProps = {
   visible: boolean;
@@ -15,6 +16,8 @@ type PhoneVerificationMenuBarProps = {
 };
     
 export const PhoneVerificationMenuBar: React.FC<PhoneVerificationMenuBarProps> = ({ visible, onClose }) => {
+  const { theme } = useTheme();
+  
   const menuItems = [
     { id: '1', title: 'Help Centre' },
   ];
@@ -38,21 +41,21 @@ export const PhoneVerificationMenuBar: React.FC<PhoneVerificationMenuBarProps> =
       onRequestClose={onClose}
     >
       <TouchableOpacity
-        style={phoneVerificationMenuBarStyles.overlay}
+        style={[phoneVerificationMenuBarStyles.overlay, { backgroundColor: 'transparent' }]}
         activeOpacity={1}
         onPress={onClose}
       >
-        <View style={phoneVerificationMenuBarStyles.menuContainer}>
-          <SafeAreaView style={phoneVerificationMenuBarStyles.safeArea}>
+        <View style={[phoneVerificationMenuBarStyles.menuContainer, { backgroundColor: theme.background, borderColor: theme.border }]}>
+          <SafeAreaView style={[phoneVerificationMenuBarStyles.safeArea, { backgroundColor: theme.background }]}>
             <View style={phoneVerificationMenuBarStyles.menuContent}>
               {menuItems.map((item) => (
                 <TouchableOpacity
                   key={item.id}
-                  style={phoneVerificationMenuBarStyles.menuItem}
+                  style={[phoneVerificationMenuBarStyles.menuItem, { borderBottomColor: theme.border }]}
                   onPress={() => handleItemPress(item.title)}
                   activeOpacity={0.7}
                 >
-                  <Text style={phoneVerificationMenuBarStyles.menuText}>{item.title}</Text>
+                  <Text style={[phoneVerificationMenuBarStyles.menuText, { color: theme.textPrimary }]}>{item.title}</Text>
                 </TouchableOpacity>
               ))}
             </View>

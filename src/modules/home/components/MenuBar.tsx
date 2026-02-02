@@ -7,6 +7,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { menuBarStyles } from '../styles/MenuBar.styles';
+import { useTheme } from '../../../contexts/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../../types/navigation';
@@ -20,6 +21,7 @@ type MenuBarNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export const MenuBar: React.FC<MenuBarProps> = ({ visible, onClose }) => {
   const navigation = useNavigation<MenuBarNavigationProp>();
+  const { theme } = useTheme();
 
   const menuItems = [
     { id: 1, title: 'New group' },
@@ -48,21 +50,21 @@ export const MenuBar: React.FC<MenuBarProps> = ({ visible, onClose }) => {
       onRequestClose={onClose}
     >
       <TouchableOpacity
-        style={menuBarStyles.overlay}
+        style={[menuBarStyles.overlay, { backgroundColor: 'transparent' }]}
         activeOpacity={1}
         onPress={onClose}
       >
-        <View style={menuBarStyles.menuContainer}>
-          <SafeAreaView style={menuBarStyles.safeArea}>
+        <View style={[menuBarStyles.menuContainer, { backgroundColor: theme.background, borderColor: theme.border }]}>
+          <SafeAreaView style={[menuBarStyles.safeArea, { backgroundColor: theme.background }]}>
             <View style={menuBarStyles.menuContent}>
               {menuItems.map((item) => (
                 <TouchableOpacity
                   key={item.id}
-                  style={menuBarStyles.menuItem}
+                  style={[menuBarStyles.menuItem, { borderBottomColor: theme.border }]}
                   onPress={() => handleItemPress(item.title)}
                   activeOpacity={0.7}
                 >
-                  <Text style={menuBarStyles.menuText}>{item.title}</Text>
+                  <Text style={[menuBarStyles.menuText, { color: theme.textPrimary }]}>{item.title}</Text>
                 </TouchableOpacity>
               ))}
             </View>

@@ -12,10 +12,11 @@ import {
 import { callsScreenStyles } from '../styles/CallsScreen.styles';
 import { CallCard } from '../components/CallCard';
 import { dummyCalls } from '../../../data/dummyCalls';
-import { colors } from '../../../styles/colors';
+import { useTheme } from '../../../contexts/ThemeContext';
 import type { CallLog } from '../../../data/dummyCalls';
 
 export const CallsScreen: React.FC = () => {
+  const { theme, isDark } = useTheme();
   const quickActions = [
     {
       id: 'call',
@@ -69,36 +70,36 @@ export const CallsScreen: React.FC = () => {
   );
 
   return (
-    <SafeAreaView style={callsScreenStyles.container}>
+    <SafeAreaView style={[callsScreenStyles.container, { backgroundColor: theme.background }]}>
       <StatusBar
-        backgroundColor={colors.white}
-        barStyle="dark-content"
+        backgroundColor={theme.background}
+        barStyle={isDark ? 'light-content' : 'dark-content'}
       />
       
       {/* Header */}
-      <View style={callsScreenStyles.header}>
-        <Text style={callsScreenStyles.headerTitle}>Calls</Text>
+      <View style={[callsScreenStyles.header, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
+        <Text style={[callsScreenStyles.headerTitle, { color: theme.textPrimary }]}>Calls</Text>
         <View style={callsScreenStyles.headerActions}>
           <TouchableOpacity style={callsScreenStyles.headerButton}>
             <Image
               source={require('../../../assets/icons/search.png')}
-              style={callsScreenStyles.searchIcon}
+              style={[callsScreenStyles.searchIcon, { tintColor: theme.textPrimary }]}
               resizeMode="contain"
             />
           </TouchableOpacity>
           <TouchableOpacity style={callsScreenStyles.headerButton}>
             <Image
               source={require('../../../assets/icons/menu-bar.png')}
-              style={callsScreenStyles.menuIcon}
+              style={[callsScreenStyles.menuIcon, { tintColor: theme.textPrimary }]}
               resizeMode="contain"
             />
           </TouchableOpacity>
         </View>
       </View>
 
-      <ScrollView style={callsScreenStyles.scrollView}>
+      <ScrollView style={[callsScreenStyles.scrollView, { backgroundColor: theme.background }]}>
         {/* Quick Action Row */}
-        <View style={callsScreenStyles.quickActionsRow}>
+        <View style={[callsScreenStyles.quickActionsRow, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
           {quickActions.map((action) => (
             <TouchableOpacity
               key={action.id}
@@ -106,21 +107,21 @@ export const CallsScreen: React.FC = () => {
               onPress={() => handleQuickAction(action.label)}
               activeOpacity={0.7}
             >
-              <View style={callsScreenStyles.quickActionIconContainer}>
+              <View style={[callsScreenStyles.quickActionIconContainer, { backgroundColor: theme.backgroundInput }]}>
                 <Image
                   source={action.icon}
-                  style={callsScreenStyles.quickActionIcon}
+                  style={[callsScreenStyles.quickActionIcon, { tintColor: theme.iconGray }]}
                   resizeMode="contain"
                 />
               </View>
-              <Text style={callsScreenStyles.quickActionLabel}>{action.label}</Text>
+              <Text style={[callsScreenStyles.quickActionLabel, { color: theme.textPrimary }]}>{action.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
         {/* Recent Section */}
-        <View style={callsScreenStyles.sectionHeader}>
-          <Text style={callsScreenStyles.sectionTitle}>Recent</Text>
+        <View style={[callsScreenStyles.sectionHeader, { backgroundColor: theme.backgroundLight }]}>
+          <Text style={[callsScreenStyles.sectionTitle, { color: theme.textSecondary }]}>Recent</Text>
         </View>
 
         {/* Calls List */}
@@ -132,11 +133,11 @@ export const CallsScreen: React.FC = () => {
         />
 
         {/* Encryption Info */}
-        <View style={callsScreenStyles.encryptionInfo}>
+        <View style={[callsScreenStyles.encryptionInfo, { backgroundColor: theme.background }]}>
           <Text style={callsScreenStyles.lockIcon}>🔒</Text>
-          <Text style={callsScreenStyles.encryptionText}>
+          <Text style={[callsScreenStyles.encryptionText, { color: theme.textSecondary }]}>
             Your personal calls are{' '}
-            <Text style={callsScreenStyles.encryptionHighlight}>
+            <Text style={[callsScreenStyles.encryptionHighlight, { color: theme.whatsappGreen }]}>
               end-to-end encrypted
             </Text>
           </Text>
@@ -145,13 +146,13 @@ export const CallsScreen: React.FC = () => {
 
       {/* Floating Action Button */}
       <TouchableOpacity
-        style={callsScreenStyles.fab}
+        style={[callsScreenStyles.fab, { backgroundColor: theme.floatingButton }]}
         onPress={handleNewCall}
         activeOpacity={0.8}
       >
         <Image
           source={require('../../../assets/icons/new-call.png')}
-          style={callsScreenStyles.fabIconImage}
+          style={[callsScreenStyles.fabIconImage, { tintColor: theme.white }]}
           resizeMode="contain"
         />
       </TouchableOpacity>

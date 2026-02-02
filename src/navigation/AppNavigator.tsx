@@ -4,11 +4,12 @@ import auth, { FirebaseAuthTypes } from "@react-native-firebase/auth"
 import { AuthStack } from "./AuthStack"
 import { AppStack } from "./AppStack"
 import { splashScreenStyles } from "../modules/auth/styles/SplashScreen.styles"
+import { useTheme } from "../contexts/ThemeContext"
 
 const AppNavigator: React.FC = () => {
   const [initializing, setInitializing] = useState<boolean>(true);
   const [user, setUser] = useState<FirebaseAuthTypes.User | null>(null);
-  const [manualAuth, setManualAuth] = useState<boolean>(false);
+  const { theme, isDark } = useTheme();
 
   useEffect(() => {
     console.log('[AppNavigator] Setting up Firebase auth state listener...');
@@ -21,7 +22,6 @@ const AppNavigator: React.FC = () => {
       console.log('[AppNavigator] onAuthStateChanged →',
         firebaseUser ? `uid=${firebaseUser.uid}, phone=${firebaseUser.phoneNumber}` : 'no user');
       setUser(firebaseUser);
-      setManualAuth(false); // Always false - only Firebase Auth
       setInitializing(false);
     });
 
@@ -34,8 +34,11 @@ const AppNavigator: React.FC = () => {
   // During initialization, show splash screen
   if (initializing) {
     return (
-      <View style={splashScreenStyles.container}>
-        <StatusBar barStyle="dark-content" />
+      <View style={[splashScreenStyles.container, { backgroundColor: theme.background }]}>
+        <StatusBar 
+          barStyle={isDark ? 'light-content' : 'dark-content'}
+          backgroundColor={theme.background}
+        />
         <View style={splashScreenStyles.content}>
           <View style={splashScreenStyles.logoContainer}>
             <Image
@@ -45,10 +48,10 @@ const AppNavigator: React.FC = () => {
             />
           </View>
           <View style={splashScreenStyles.footer}>
-            <Text style={splashScreenStyles.footerText}>from</Text>
+            <Text style={[splashScreenStyles.footerText, { color: theme.textTertiary }]}>from</Text>
             <View style={splashScreenStyles.metaContainer}>
-              <Text style={splashScreenStyles.metaIcon}>∞</Text>
-              <Text style={splashScreenStyles.metaText}>Meta</Text>
+              <Text style={[splashScreenStyles.metaIcon, { color: theme.whatsappGreen }]}>∞</Text>
+              <Text style={[splashScreenStyles.metaText, { color: theme.whatsappGreen }]}>Meta</Text>
             </View>
           </View>
         </View>

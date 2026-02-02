@@ -16,15 +16,13 @@ export const settingsItemStyles = StyleSheet.create({
     width: spacing["3xl"] + spacing.xs,
     height: spacing["3xl"] + spacing.xs,
     borderRadius: spacing.lg,
-    backgroundColor: colors.backgroundGray,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,
   },
-  iconText: {
-    fontSize: typography.fontSize.lg,
-    fontFamily: typography.fontFamily.regular,
-    color: colors.iconGray,
+  iconImage: {
+    width: spacing.iconSize,
+    height: spacing.iconSize,
   },
   content: {
     flex: 1,

@@ -13,9 +13,8 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../../types/navigation';
 import firestore from '@react-native-firebase/firestore';
 import { getUserData } from '../../../services/userService';
-import { colors } from '../../../styles/colors';
-import { spacing } from '../../../styles/spacing';
-import { typography } from '../../../styles/typography';
+import { useTheme } from '../../../contexts/ThemeContext';
+import { contactProfileScreenStyles } from '../styles/ContactProfileScreen.styles';
 
 type ContactProfileScreenRouteProp = {
   key: string;
@@ -32,6 +31,7 @@ type ContactProfileScreenNavigationProp = NativeStackNavigationProp<RootStackPar
 export const ContactProfileScreen: React.FC = () => {
   const navigation = useNavigation<ContactProfileScreenNavigationProp>();
   const route = useRoute<ContactProfileScreenRouteProp>();
+  const { theme } = useTheme();
   const { userId, userName: initialUserName, phoneNumber: initialPhoneNumber } = route.params;
 
   const [phoneNumber, setPhoneNumber] = useState<string | null>(initialPhoneNumber || null);
@@ -90,128 +90,21 @@ export const ContactProfileScreen: React.FC = () => {
     navigation.goBack();
   };
 
-  const profileScreenStyles = {
-    container: {
-      flex: 1,
-      backgroundColor: colors.background,
-    },
-    header: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      paddingHorizontal: spacing.lg,
-      paddingVertical: spacing.md,
-      backgroundColor: colors.white,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.borderLight,
-      paddingTop: spacing.lg,
-    },
-    backButton: {
-      padding: spacing.xs,
-    },
-    backIcon: {
-      width: spacing.lg * 1.2,
-      height: spacing.lg * 1.2,
-      tintColor: colors.whatsappGreen,
-    },
-    headerTitle: {
-      fontSize: typography.fontSize.xl,
-      fontFamily: typography.fontFamily.bold,
-      color: colors.textPrimary,
-      marginLeft: spacing.md,
-    },
-    scrollView: {
-      flex: 1,
-      backgroundColor: colors.backgroundLight,
-    },
-    contentContainer: {
-      paddingBottom: spacing.xl * 2,
-    },
-    avatarSection: {
-      alignItems: 'center' as const,
-      paddingVertical: spacing.xl * 2,
-      backgroundColor: colors.white,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.borderLight,
-    },
-    avatar: {
-      width: spacing.avatarSize * 2,
-      height: spacing.avatarSize * 2,
-      borderRadius: spacing.avatarSize,
-      backgroundColor: colors.whatsappGreen,
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-      marginBottom: spacing.md,
-    },
-    avatarText: {
-      fontSize: typography.fontSize['4xl'],
-      fontFamily: typography.fontFamily.bold,
-      color: colors.white,
-    },
-    unknownUserAvatar: {
-      width: spacing.avatarSize * 2,
-      height: spacing.avatarSize * 2,
-      borderRadius: spacing.avatarSize,
-    },
-    profileItem: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      paddingHorizontal: spacing.lg,
-      paddingVertical: spacing.md,
-      backgroundColor: colors.white,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.borderLight,
-    },
-    profileItemIcon: {
-      width: spacing['3xl'],
-      height: spacing['3xl'],
-      borderRadius: spacing.lg,
-      backgroundColor: colors.backgroundGray,
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-      marginRight: spacing.md,
-    },
-    profileItemIconText: {
-      fontSize: typography.fontSize.lg,
-      fontFamily: typography.fontFamily.regular,
-      color: colors.iconGray,
-    },
-    profileItemContent: {
-      flex: 1,
-    },
-    profileItemLabel: {
-      fontSize: typography.fontSize.sm,
-      fontFamily: typography.fontFamily.semibold,
-      color: colors.textPrimary,
-      marginBottom: spacing.xs,
-    },
-    profileItemValue: {
-      fontSize: typography.fontSize.base,
-      fontFamily: typography.fontFamily.regular,
-      color: colors.textSecondary,
-    },
-    loadingContainer: {
-      flex: 1,
-      justifyContent: 'center' as const,
-      alignItems: 'center' as const,
-      backgroundColor: colors.background,
-    },
-  };
-
   if (loading) {
     return (
-      <SafeAreaView style={profileScreenStyles.container}>
-        <View style={profileScreenStyles.header}>
-          <TouchableOpacity onPress={handleBackPress} style={profileScreenStyles.backButton}>
+      <SafeAreaView style={[contactProfileScreenStyles.container, { backgroundColor: theme.background }]}>
+        <View style={[contactProfileScreenStyles.header, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
+          <TouchableOpacity onPress={handleBackPress} style={contactProfileScreenStyles.backButton}>
             <Image
               source={require('../../../assets/icons/back.png')}
-              style={profileScreenStyles.backIcon}
+              style={[contactProfileScreenStyles.backIcon, { tintColor: theme.textPrimary }]}
               resizeMode="contain"
             />
           </TouchableOpacity>
-          <Text style={profileScreenStyles.headerTitle}>Contact Info</Text>
+          <Text style={[contactProfileScreenStyles.headerTitle, { color: theme.textPrimary }]}>Contact Info</Text>
         </View>
-        <View style={profileScreenStyles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.whatsappGreen} />
+        <View style={contactProfileScreenStyles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.whatsappGreen} />
         </View>
       </SafeAreaView>
     );
@@ -226,57 +119,57 @@ export const ContactProfileScreen: React.FC = () => {
   const avatarLetter = displayName?.charAt(0)?.toUpperCase() || '?';
 
   return (
-    <SafeAreaView style={profileScreenStyles.container}>
+    <SafeAreaView style={[contactProfileScreenStyles.container, { backgroundColor: theme.background }]}>
       {/* Header */}
-      <View style={profileScreenStyles.header}>
-        <TouchableOpacity onPress={handleBackPress} style={profileScreenStyles.backButton}>
+      <View style={[contactProfileScreenStyles.header, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
+        <TouchableOpacity onPress={handleBackPress} style={contactProfileScreenStyles.backButton}>
           <Image
             source={require('../../../assets/icons/back.png')}
-            style={profileScreenStyles.backIcon}
+            style={[contactProfileScreenStyles.backIcon, { tintColor: theme.textPrimary }]}
             resizeMode="contain"
           />
         </TouchableOpacity>
-        <Text style={profileScreenStyles.headerTitle}>Contact Info</Text>
+        <Text style={[contactProfileScreenStyles.headerTitle, { color: theme.textPrimary }]}>Contact Info</Text>
       </View>
 
       <ScrollView
-        style={profileScreenStyles.scrollView}
-        contentContainerStyle={profileScreenStyles.contentContainer}
+        style={[contactProfileScreenStyles.scrollView, { backgroundColor: theme.backgroundLight }]}
+        contentContainerStyle={contactProfileScreenStyles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
         {/* Avatar Section */}
-        <View style={profileScreenStyles.avatarSection}>
-          <View style={profileScreenStyles.avatar}>
+        <View style={contactProfileScreenStyles.avatarSection}>
+          <View style={[contactProfileScreenStyles.avatar, { backgroundColor: theme.whatsappGreen }]}>
             {isUnknownUser ? (
               <Image
                 source={require('../../../assets/icons/unknown-user.png')}
-                style={profileScreenStyles.unknownUserAvatar}
+                style={contactProfileScreenStyles.unknownUserAvatar}
                 resizeMode="contain"
               />
             ) : (
-              <Text style={profileScreenStyles.avatarText}>{avatarLetter}</Text>
+              <Text style={[contactProfileScreenStyles.avatarText, { color: theme.white }]}>{avatarLetter}</Text>
             )}
           </View>
         </View>
 
         {/* Profile Items */}
-        <View style={profileScreenStyles.profileItem}>
-          <View style={profileScreenStyles.profileItemIcon}>
-            <Text style={profileScreenStyles.profileItemIconText}>👤</Text>
+        <View style={[contactProfileScreenStyles.profileItem, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
+          <View style={contactProfileScreenStyles.profileItemIcon}>
+            <Text style={contactProfileScreenStyles.profileItemIconText}>👤</Text>
           </View>
-          <View style={profileScreenStyles.profileItemContent}>
-            <Text style={profileScreenStyles.profileItemLabel}>Name</Text>
-            <Text style={profileScreenStyles.profileItemValue}>{displayName}</Text>
+          <View style={contactProfileScreenStyles.profileItemContent}>
+            <Text style={[contactProfileScreenStyles.profileItemLabel, { color: theme.textSecondary }]}>Name</Text>
+            <Text style={[contactProfileScreenStyles.profileItemValue, { color: theme.textPrimary }]}>{displayName}</Text>
           </View>
         </View>
 
-        <View style={profileScreenStyles.profileItem}>
-          <View style={profileScreenStyles.profileItemIcon}>
-            <Text style={profileScreenStyles.profileItemIconText}>📞</Text>
+        <View style={[contactProfileScreenStyles.profileItem, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
+          <View style={contactProfileScreenStyles.profileItemIcon}>
+            <Text style={contactProfileScreenStyles.profileItemIconText}>📞</Text>
           </View>
-          <View style={profileScreenStyles.profileItemContent}>
-            <Text style={profileScreenStyles.profileItemLabel}>Phone</Text>
-            <Text style={profileScreenStyles.profileItemValue}>
+          <View style={contactProfileScreenStyles.profileItemContent}>
+            <Text style={[contactProfileScreenStyles.profileItemLabel, { color: theme.textSecondary }]}>Phone</Text>
+            <Text style={[contactProfileScreenStyles.profileItemValue, { color: theme.textPrimary }]}>
               {phoneNumber || 'No phone number'}
             </Text>
           </View>

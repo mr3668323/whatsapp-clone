@@ -5,6 +5,9 @@
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { colors } from '../../styles/colors';
+import { spacing } from '../../styles/spacing';
+import { typography } from '../../styles/typography';
 
 interface Props {
   children: ReactNode;
@@ -86,35 +89,35 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#fff',
+    padding: spacing.lg,
+    backgroundColor: colors.white,
   },
   title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    color: '#000',
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.bold,
+    marginBottom: spacing.sm,
+    color: colors.textPrimary,
   },
   message: {
-    fontSize: 16,
-    marginBottom: 20,
-    color: '#666',
+    fontSize: typography.fontSize.base,
+    marginBottom: spacing.lg,
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   stack: {
-    fontSize: 12,
-    color: '#999',
-    marginBottom: 20,
+    fontSize: typography.fontSize.xs,
+    color: colors.textTertiary,
+    marginBottom: spacing.lg,
     fontFamily: 'monospace',
   },
   button: {
-    backgroundColor: '#25D366',
-    padding: 12,
-    borderRadius: 8,
+    backgroundColor: colors.buttonPrimary,
+    padding: spacing.md,
+    borderRadius: spacing.sm,
   },
   buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
+    color: colors.buttonTextPrimary,
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.bold,
   },
 });

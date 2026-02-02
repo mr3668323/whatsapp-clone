@@ -13,20 +13,17 @@ export const metaAppIconStyles = StyleSheet.create({
     width: spacing.avatarSize,
     height: spacing.avatarSize,
     borderRadius: spacing.avatarSize / 2,
-    backgroundColor: colors.backgroundGray,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.sm,
   },
-  icon: {
-    fontSize: typography.fontSize.xl,
-    fontFamily: typography.fontFamily.regular,
-    color: colors.iconGray,
+  iconImage: {
+    width: spacing.iconSize,
+    height: spacing.iconSize,
   },
   name: {
     fontSize: typography.fontSize.xs,
     fontFamily: typography.fontFamily.medium,
-    color: colors.textPrimary,
     textAlign: 'center',
   },
 });

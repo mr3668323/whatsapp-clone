@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { communitiesScreenStyles } from '../styles/CommunitiesScreen.styles';
 import { CommunitiesMenuBar } from '../components/CommunitiesMenuBar';
-import { colors } from '../../../styles/colors';
+import { useTheme } from '../../../contexts/ThemeContext';
 
 interface Community {
   id: string;
@@ -73,6 +73,7 @@ const dummyCommunities: Community[] = [
 ];
 
 export const CommunitiesScreen: React.FC = () => {
+  const { theme, isDark } = useTheme();
   const [communities] = useState<Community[]>(dummyCommunities);
   const [menuVisible, setMenuVisible] = useState(false);
 
@@ -86,37 +87,37 @@ export const CommunitiesScreen: React.FC = () => {
 
   const renderCommunityItem = ({ item }: { item: Community }) => (
     <TouchableOpacity
-      style={communitiesScreenStyles.communityCard}
+      style={[communitiesScreenStyles.communityCard, { backgroundColor: theme.background, borderBottomColor: theme.border }]}
       onPress={() => handleCommunityPress(item.id)}
       activeOpacity={0.7}
     >
-      <View style={communitiesScreenStyles.communityAvatar}>
-        <Text style={communitiesScreenStyles.communityAvatarText}>{item.avatar}</Text>
+      <View style={[communitiesScreenStyles.communityAvatar, { backgroundColor: theme.whatsappGreen }]}>
+        <Text style={[communitiesScreenStyles.communityAvatarText, { color: theme.white }]}>{item.avatar}</Text>
       </View>
       <View style={communitiesScreenStyles.communityInfo}>
         <View style={communitiesScreenStyles.communityHeader}>
-          <Text style={communitiesScreenStyles.communityName}>{item.name}</Text>
+          <Text style={[communitiesScreenStyles.communityName, { color: theme.textPrimary }]}>{item.name}</Text>
           {item.unreadCount > 0 && (
-            <View style={communitiesScreenStyles.unreadBadge}>
-              <Text style={communitiesScreenStyles.unreadBadgeText}>
+            <View style={[communitiesScreenStyles.unreadBadge, { backgroundColor: theme.unreadBadge }]}>
+              <Text style={[communitiesScreenStyles.unreadBadgeText, { color: theme.white }]}>
                 {item.unreadCount > 99 ? '99+' : item.unreadCount}
               </Text>
             </View>
           )}
         </View>
-        <Text style={communitiesScreenStyles.communityDescription} numberOfLines={1}>
+        <Text style={[communitiesScreenStyles.communityDescription, { color: theme.textSecondary }]} numberOfLines={1}>
           {item.description}
         </Text>
-        <Text style={communitiesScreenStyles.memberCount}>{item.memberCount} members</Text>
+        <Text style={[communitiesScreenStyles.memberCount, { color: theme.textTertiary }]}>{item.memberCount} members</Text>
       </View>
     </TouchableOpacity>
   );
 
   return (
-    <SafeAreaView style={communitiesScreenStyles.container}>
+    <SafeAreaView style={[communitiesScreenStyles.container, { backgroundColor: theme.background }]}>
       <StatusBar
-        backgroundColor={colors.white}
-        barStyle="dark-content"
+        backgroundColor={theme.background}
+        barStyle={isDark ? 'light-content' : 'dark-content'}
       />
       
       {/* Menu Bar */}
@@ -126,23 +127,23 @@ export const CommunitiesScreen: React.FC = () => {
       />
       
       {/* Header */}
-      <View style={communitiesScreenStyles.header}>
-        <Text style={communitiesScreenStyles.headerTitle}>Communities</Text>
+      <View style={[communitiesScreenStyles.header, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
+        <Text style={[communitiesScreenStyles.headerTitle, { color: theme.textPrimary }]}>Communities</Text>
         <TouchableOpacity 
           style={communitiesScreenStyles.headerButton} 
           onPress={() => setMenuVisible(true)}
         >
           <Image
             source={require('../../../assets/icons/menu-bar.png')}
-            style={communitiesScreenStyles.menuIcon}
+            style={[communitiesScreenStyles.menuIcon, { tintColor: theme.textPrimary }]}
             resizeMode="contain"
           />
         </TouchableOpacity>
       </View>
 
       {/* Info Section */}
-      <View style={communitiesScreenStyles.infoSection}>
-        <Text style={communitiesScreenStyles.infoText}>
+      <View style={[communitiesScreenStyles.infoSection, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
+        <Text style={[communitiesScreenStyles.infoText, { color: theme.textSecondary }]}>
           Stay connected with your communities. Create groups, share updates, and engage with members.
         </Text>
       </View>
@@ -158,11 +159,11 @@ export const CommunitiesScreen: React.FC = () => {
 
       {/* FAB */}
       <TouchableOpacity 
-        style={communitiesScreenStyles.fab} 
+        style={[communitiesScreenStyles.fab, { backgroundColor: theme.floatingButton }]} 
         onPress={handleNewCommunity} 
         activeOpacity={0.7}
       >
-        <Text style={communitiesScreenStyles.fabText}>+</Text>
+        <Text style={[communitiesScreenStyles.fabText, { color: theme.white }]}>+</Text>
       </TouchableOpacity>
     </SafeAreaView>
   );

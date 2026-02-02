@@ -4,6 +4,7 @@ import { BottomTabNavigator } from './BottomTabNavigator';
 import { ChatScreen } from '../modules/chat/screens/ChatScreen';
 import { SettingsScreen } from '../modules/settings/screens/SettingsScreen';
 import { ProfileScreen } from '../modules/settings/screens/ProfileScreen';
+import { ChatsSettingsScreen } from '../modules/settings/screens/ChatsSettingsScreen';
 import { NewChatScreen } from '../modules/chat/screens/NewChatScreen';
 import { ContactProfileScreen } from '../modules/chat/screens/ContactProfileScreen';
 import { useBackHandler } from '../hooks/useBackHandler';
@@ -56,6 +57,16 @@ export const AppStack: React.FC = () => {
         name="Settings"
         component={SettingsScreen}
         options={{
+          animation: 'slide_from_right',
+          gestureEnabled: true,
+        }}
+      />
+
+      <Stack.Screen
+        name="ChatsSettings"
+        component={ChatsSettingsScreen}
+        options={{
+          headerShown: false,
           animation: 'slide_from_right',
           gestureEnabled: true,
         }}

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Modal, FlatList } from 'react-native';
 import { countryPickerStyles } from '../styles/CountryPicker.styles';
+import { useTheme } from '../../../contexts/ThemeContext';
 import { Country, countries } from '../../../data/countries';
 
 interface CountryPickerProps {
@@ -12,6 +13,7 @@ export const CountryPicker: React.FC<CountryPickerProps> = ({
   selectedCountry,
   onCountrySelect,
 }) => {
+  const { theme } = useTheme();
   const [modalVisible, setModalVisible] = useState(false);
 
   const handleSelect = (country: Country) => {
@@ -21,12 +23,12 @@ export const CountryPicker: React.FC<CountryPickerProps> = ({
 
   const renderCountryItem = ({ item }: { item: Country }) => (
     <TouchableOpacity
-      style={countryPickerStyles.modalItem}
+      style={[countryPickerStyles.modalItem, { backgroundColor: theme.background, borderBottomColor: theme.border }]}
       onPress={() => handleSelect(item)}
     >
       <Text style={countryPickerStyles.modalFlag}>{item.flag}</Text>
-      <Text style={countryPickerStyles.modalCountryName}>{item.name}</Text>
-      <Text style={countryPickerStyles.modalDialCode}>{item.dialCode}</Text>
+      <Text style={[countryPickerStyles.modalCountryName, { color: theme.textPrimary }]}>{item.name}</Text>
+      <Text style={[countryPickerStyles.modalDialCode, { color: theme.textSecondary }]}>{item.dialCode}</Text>
     </TouchableOpacity>
   );
 
@@ -49,12 +51,12 @@ export const CountryPicker: React.FC<CountryPickerProps> = ({
         transparent={true}
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={countryPickerStyles.modalOverlay}>
-          <View style={countryPickerStyles.modalContent}>
-            <View style={countryPickerStyles.modalHeader}>
-              <Text style={countryPickerStyles.modalTitle}>Select Country</Text>
+        <View style={[countryPickerStyles.modalOverlay, { backgroundColor: theme.overlayDark }]}>
+          <View style={[countryPickerStyles.modalContent, { backgroundColor: theme.background }]}>
+            <View style={[countryPickerStyles.modalHeader, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
+              <Text style={[countryPickerStyles.modalTitle, { color: theme.textPrimary }]}>Select Country</Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Text style={countryPickerStyles.modalClose}>✕</Text>
+                <Text style={[countryPickerStyles.modalClose, { color: theme.textPrimary }]}>✕</Text>
               </TouchableOpacity>
             </View>
             <FlatList
@@ -62,6 +64,7 @@ export const CountryPicker: React.FC<CountryPickerProps> = ({
               renderItem={renderCountryItem}
               keyExtractor={(item) => item.code}
               showsVerticalScrollIndicator={false}
+              style={{ backgroundColor: theme.background }}
             />
           </View>
         </View>
