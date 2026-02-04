@@ -128,6 +128,12 @@ export const chatScreenStyles = StyleSheet.create({
   messageRowOther: {
     alignItems: 'flex-start',
   },
+  messageSelected: {
+    opacity: 0.7,
+    backgroundColor: 'rgba(0, 122, 255, 0.1)', // WhatsApp-like selection highlight
+    borderRadius: spacing.sm,
+    padding: spacing.xxs,
+  },
 
   /* -------------------- Message Bubble -------------------- */
   messageBubble: {
@@ -136,6 +142,7 @@ export const chatScreenStyles = StyleSheet.create({
     paddingVertical: spacing.sm,
     borderRadius: spacing.md,
     marginVertical: spacing.xxs,
+    overflow: 'hidden', // Prevent content from exceeding bubble boundaries
   },
   myMessage: {
     backgroundColor: colors.bubbleSent, // WhatsApp green tint
@@ -144,6 +151,64 @@ export const chatScreenStyles = StyleSheet.create({
   otherMessage: {
     backgroundColor: colors.bubbleReceived, // White
     borderTopLeftRadius: spacing.xs,
+  },
+  mediaImage: {
+    width: spacing['6xl'],
+    height: spacing['6xl'],
+    borderRadius: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  mediaFileText: {
+    fontSize: typography.fontSize.base,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.whatsappBlue,
+    marginTop: spacing.xs,
+  },
+  voiceMessageContainer: {
+    paddingVertical: spacing.xs,
+    width: '100%', // Take full width of parent bubble (bubble already maxWidth: 75%)
+  },
+  voiceMessageRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    minWidth: 160,
+  },
+  voicePlayButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.white,
+  },
+  voicePlayIcon: {
+    width: 20,
+    height: 20,
+    tintColor: colors.whatsappGreen,
+  },
+  voiceDurationText: {
+    fontSize: typography.fontSize.xs,
+    fontFamily: typography.fontFamily.medium,
+    color: colors.textSecondary,
+    minWidth: 35,
+    marginRight: spacing.xs,
+  },
+  voiceWaveform: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    gap: 1.5,
+    flex: 1,
+    height: 16,
+    marginLeft: spacing.xs,
+    minWidth: 0, // Allow flex item to shrink below content size
+    overflow: 'hidden', // Prevent overflow beyond container
+  },
+  voiceWaveformBar: {
+    width: 2.5,
+    borderRadius: 1.25,
+    backgroundColor: colors.textSecondary,
   },
   messageText: {
     fontSize: typography.fontSize.base,
@@ -193,6 +258,76 @@ export const chatScreenStyles = StyleSheet.create({
     height: 4,
     borderRadius: 2,
     backgroundColor: colors.textSecondary,
+  },
+
+  /* -------------------- Pending Media Preview -------------------- */
+  pendingMediaContainer: {
+    paddingHorizontal: spacing.sm,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xs,
+    backgroundColor: colors.backgroundInput,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  pendingMediaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderRadius: spacing.md,
+    padding: spacing.sm,
+    gap: spacing.sm,
+  },
+  pendingMediaThumbnail: {
+    width: 50,
+    height: 50,
+    borderRadius: spacing.xs,
+    backgroundColor: colors.border,
+  },
+  pendingMediaIconContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: spacing.xs,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pendingMediaIcon: {
+    fontSize: typography.fontSize.xl,
+  },
+  pendingMediaInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  pendingMediaFileName: {
+    fontSize: typography.fontSize.base,
+    fontFamily: typography.fontFamily.medium,
+    color: colors.textPrimary,
+    marginBottom: spacing.xxs,
+  },
+  pendingMediaFileSize: {
+    fontSize: typography.fontSize.xs,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textSecondary,
+  },
+  pendingMediaCancelButton: {
+    padding: spacing.xs,
+  },
+  pendingMediaCancelIcon: {
+    fontSize: typography.fontSize.base,
+  },
+  videoPlayOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderRadius: spacing.xs,
+  },
+  videoPlayIcon: {
+    fontSize: typography.fontSize.lg,
+    color: colors.white,
   },
 
   /* -------------------- Input Area -------------------- */
@@ -263,6 +398,12 @@ export const chatScreenStyles = StyleSheet.create({
     width: spacing.iconSize,
     height: spacing.iconSize,
     tintColor: colors.white,
+  },
+  micTimerText: {
+    fontSize: typography.fontSize.xs,
+    fontFamily: typography.fontFamily.medium,
+    color: colors.white,
+    textAlign: 'center',
   },
   sendButton: {
     width: spacing.inputHeight,

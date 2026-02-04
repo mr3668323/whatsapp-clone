@@ -48,9 +48,18 @@ const ChatItem = React.memo(
     const unread = chat.unreadCount?.[currentUserUid] || 0;
     
     // Get last message text (handle both old string format and new object format)
-    const lastMessageText = typeof chat.lastMessage === 'string' 
+    let lastMessageText = typeof chat.lastMessage === 'string' 
       ? chat.lastMessage 
       : chat.lastMessage?.text || 'No messages yet';
+    
+    const isVoiceMessage =
+      typeof chat.lastMessage === 'object' && chat.lastMessage?.mediaType === 'audio';
+
+    // If it's a voice message, remove any leading emoji and keep clean text
+    if (isVoiceMessage) {
+      // Strip leading 🎤 emoji if present so we can use the mic icon instead
+      lastMessageText = lastMessageText.replace(/^🎤\s*/, '') || 'Voice message';
+    }
     
     // Get last message timestamp
     const lastMessageTime = chat.lastMessageTime || chat.lastMessage?.timestamp;
@@ -146,10 +155,17 @@ const ChatItem = React.memo(
           </View>
 
           <View style={homeScreenStyles.messagePreview}>
+            {renderTicks()}
+            {isVoiceMessage && (
+              <Image
+                source={require('../../../assets/icons/voice-message.png')}
+                style={[homeScreenStyles.voicePreviewIcon, { tintColor: theme.textSecondary }]}
+                resizeMode="contain"
+              />
+            )}
             <Text style={[homeScreenStyles.messageText, { color: theme.textSecondary }]} numberOfLines={1}>
               {lastMessageText}
             </Text>
-            {renderTicks()}
           </View>
         </View>
 

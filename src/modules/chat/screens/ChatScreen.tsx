@@ -12,6 +12,8 @@ import {
     Alert,
     Image,
     Keyboard,
+    Linking,
+    PermissionsAndroid,
 } from 'react-native';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
@@ -29,16 +31,24 @@ import { ChatMenu } from '../../../components/chat/ChatMenu';
 import { sendMessageToMetaAI } from '../../../services/metaAIService';
 import { getUserData } from '../../../services/userService';
 import { getChatRoomId } from '../../../utils/chatRoomId';
+import { pickImageOrVideo, pickDocument, openCamera } from '../../../utils/mediaPicker';
+import { uploadMedia } from '../../../services/cloudinaryService';
+import { CLOUDINARY_CONFIG } from '../../../config/cloudinary';
+import { API_BASE_URL } from '../../../config/api';
+import RNFS from 'react-native-fs';
 
 type RouteParams = {
     chatId: string;
     chatName: string;
 };
 
-export const ChatScreen = () => {
+const ChatScreen: React.FC = () => {
     const route = useRoute<any>();
     const navigation = useNavigation();
     const { theme, isDark } = useTheme();
+    
+    // Use styles (should always be defined)
+    const styles = chatScreenStyles || {};
     let { chatId, chatName } = route.params as RouteParams;
     
     // Treat both the initial frontend chatId ('meta_ai_chat') and the
@@ -178,9 +188,79 @@ export const ChatScreen = () => {
     const [userName, setUserName] = useState<string>('');
     // Menu visibility
     const [menuVisible, setMenuVisible] = useState(false);
-    // Input + emoji keyboard toggle
+    // Input + keyboard visibility toggle
     const inputRef = useRef<TextInput | null>(null);
-    const [isEmojiKeyboardOpen, setIsEmojiKeyboardOpen] = useState(false);
+    const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+    // Pending media (file selected but not yet sent)
+    const [pendingMedia, setPendingMedia] = useState<{
+        file: any;
+        mediaType: 'image' | 'video' | 'audio' | 'file';
+    } | null>(null);
+    // Voice recording state
+    const [isRecording, setIsRecording] = useState(false);
+    const [recordSecs, setRecordSecs] = useState(0); // Recording duration in seconds
+    const [isSlidingToCancel, setIsSlidingToCancel] = useState(false); // Track slide-to-cancel gesture
+    const audioRecorderPlayer = useRef<any>(null);
+    const recordingPathRef = useRef<string | null>(null);
+    const recordingStartedRef = useRef<boolean>(false); // Track if recording actually started successfully
+    const recordTimerRef = useRef<NodeJS.Timeout | null>(null); // Timer for recording duration
+    const micButtonRef = useRef<TouchableOpacity | null>(null);
+    // Voice playback state
+    const [currentlyPlayingMessageId, setCurrentlyPlayingMessageId] = useState<string | null>(null);
+    const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+    const [playbackSecs, setPlaybackSecs] = useState(0);
+    // Track extracted durations for messages (UI-only, not in Firestore)
+    const messageDurationsRef = useRef<Record<string, number>>({});
+    // State to trigger re-render when durations are extracted
+    const [extractedDurations, setExtractedDurations] = useState<Record<string, number>>({});
+    // Message selection state
+    const [selectedMessageIds, setSelectedMessageIds] = useState<Set<string>>(new Set());
+    
+    // Lazy load audio recorder player (only if package is installed)
+    useEffect(() => {
+        let isMounted = true;
+        
+        const initRecorder = async () => {
+            try {
+                // Dynamic import to avoid crash if package is not installed
+                const AudioRecorderPlayerModule = require('react-native-audio-recorder-player').default;
+                if (isMounted) {
+                    audioRecorderPlayer.current = new AudioRecorderPlayerModule();
+                    console.log('[ChatScreen] ✅ Audio recorder initialized');
+                }
+            } catch (error: any) {
+                console.warn('[ChatScreen] ⚠️ react-native-audio-recorder-player not installed. Voice recording disabled.', error?.message);
+                if (isMounted) {
+                    audioRecorderPlayer.current = null;
+                }
+            }
+        };
+
+        initRecorder();
+
+        // Cleanup: stop timer, recording, and playback on unmount
+        return () => {
+            isMounted = false;
+            
+            // Stop timer
+            if (recordTimerRef.current) {
+                clearInterval(recordTimerRef.current);
+                recordTimerRef.current = null;
+            }
+            
+            if (audioRecorderPlayer.current) {
+                // Stop recording if active
+                if (recordingStartedRef.current) {
+                    audioRecorderPlayer.current.stopRecorder().catch(() => {});
+                    recordingStartedRef.current = false;
+                }
+
+                // Stop playback if active
+                audioRecorderPlayer.current.stopPlayer?.().catch?.(() => {});
+                audioRecorderPlayer.current.removePlayBackListener?.();
+            }
+        };
+    }, []);
 
     // Removed manual scroll management – inverted FlatList + maintainVisibleContentPosition
     // will handle WhatsApp-like behavior (pinned to bottom when at bottom, no jump when scrolled up).
@@ -538,13 +618,197 @@ export const ChatScreen = () => {
         markMessagesAsSeen();
     }, [chatId, currentUserUid]);
 
+    /* ==================== EXTRACT DURATION FOR AUDIO MESSAGES ON LOAD ==================== */
+    // Extract duration for all audio messages when they're first loaded
+    // This ensures duration is displayed immediately, not just after playback starts
+    useEffect(() => {
+        if (!messages || messages.length === 0) {
+            return;
+        }
+
+        // Wait for audioRecorderPlayer to be initialized
+        if (!audioRecorderPlayer.current) {
+            // Retry after a short delay if audioRecorderPlayer is not ready
+            const timeout = setTimeout(() => {
+                if (audioRecorderPlayer.current) {
+                    extractDurationsForMessages();
+                }
+            }, 500);
+            return () => clearTimeout(timeout);
+        }
+
+        const extractDurationsForMessages = async () => {
+            if (!audioRecorderPlayer.current) {
+                return;
+            }
+
+            const durationsToExtract: Array<{ id: string; mediaUrl: string }> = [];
+
+            // Collect all audio messages that need duration extraction
+            for (const message of messages) {
+                // Only process audio messages
+                if (message.messageType !== 'media' || message.mediaType !== 'audio' || !message.mediaUrl) {
+                    continue;
+                }
+
+                // Skip if duration already exists in Firestore
+                if (message.duration || message.durationSecs) {
+                    continue;
+                }
+
+                // Skip if we already extracted duration for this message
+                if (messageDurationsRef.current[message.id] || extractedDurations[message.id]) {
+                    continue;
+                }
+
+                durationsToExtract.push({ id: message.id, mediaUrl: message.mediaUrl });
+            }
+
+            // Extract durations for all messages in parallel (non-blocking)
+            const extractionPromises = durationsToExtract.map(async ({ id, mediaUrl }) => {
+                try {
+                    // Try to get duration from remote URL (Cloudinary)
+                    // Note: getDuration may not work with remote URLs on all platforms
+                    // If it fails, duration will be extracted during playback
+                    const durationMs = await audioRecorderPlayer.current.getDuration?.(mediaUrl).catch(() => null);
+                    if (durationMs && durationMs > 0) {
+                        const totalSecs = Math.floor(durationMs / 1000);
+                        if (totalSecs > 0) {
+                            messageDurationsRef.current[id] = totalSecs;
+                            // Update state to trigger re-render and show duration immediately
+                            setExtractedDurations(prev => ({
+                                ...prev,
+                                [id]: totalSecs,
+                            }));
+                            console.log('[ChatScreen] ✅ Extracted duration for message', id, ':', totalSecs, 'seconds');
+                            return;
+                        }
+                    }
+                    // If getDuration doesn't work, log for debugging
+                    console.log('[ChatScreen] ⚠️ getDuration returned null/0 for message', id, '- will extract during playback');
+                } catch (error) {
+                    // Ignore errors - duration extraction is non-blocking
+                    console.warn('[ChatScreen] ⚠️ Could not extract duration for message', id, ':', error);
+                }
+            });
+
+            // Wait for all extractions to complete (non-blocking)
+            await Promise.all(extractionPromises);
+        };
+
+        extractDurationsForMessages();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [messages]); // Only depend on messages, not extractedDurations (to avoid infinite loop)
+
+    /* ==================== SEND MEDIA MESSAGE ==================== */
+    const sendMediaMessage = useCallback(
+        async (file: any, mediaType: 'image' | 'video' | 'audio' | 'file', durationSecs?: number) => {
+            if (!currentUserUid || !chatId || !file) {
+                return;
+            }
+
+            try {
+                const mediaUrl = await uploadMedia(file, mediaType);
+
+                const chatRoomRef = firestore()
+                    .collection('chatRooms')
+                    .doc(chatId);
+
+                // Add message to messages collection
+                const messageData: any = {
+                    messageType: 'media',
+                    text: '',
+                    mediaUrl,
+                    mediaType,
+                    senderId: currentUserUid,
+                    createdAt: firestore.FieldValue.serverTimestamp(),
+                    seenBy: [],
+                };
+                
+                // STEP 2: Store duration in Firestore (MANDATORY for audio messages)
+                // Field name: 'duration' (in seconds) - single source of truth
+                if (mediaType === 'audio' && durationSecs !== undefined && durationSecs > 0) {
+                    messageData.duration = durationSecs; // Store as 'duration' in seconds
+                    // Also keep durationSecs for backward compatibility
+                    messageData.durationSecs = durationSecs;
+                }
+                
+                await chatRoomRef
+                    .collection('messages')
+                    .add(messageData);
+
+                // Update chat room document with lastMessage (CRITICAL for HomeScreen preview)
+                // For voice messages, format: "🎤 Voice message (0:01)"
+                let lastMessageText = '';
+                if (mediaType === 'audio' && durationSecs !== undefined && durationSecs > 0) {
+                    // Format duration: 0:SS or M:SS
+                    const minutes = Math.floor(durationSecs / 60);
+                    const seconds = durationSecs % 60;
+                    const durationStr = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                    lastMessageText = `🎤 Voice message (${durationStr})`;
+                } else if (mediaType === 'image') {
+                    lastMessageText = '📷 Photo';
+                } else if (mediaType === 'video') {
+                    lastMessageText = '🎥 Video';
+                } else {
+                    lastMessageText = '📎 File';
+                }
+
+                // Update chat room document with lastMessage (CRITICAL for HomeScreen preview)
+                // Use batch to ensure atomic update
+                const batch = firestore().batch();
+                batch.update(chatRoomRef, {
+                    lastMessage: {
+                        text: lastMessageText,
+                        senderId: currentUserUid,
+                        timestamp: firestore.FieldValue.serverTimestamp(),
+                        seenBy: [],
+                        mediaType: mediaType, // Include mediaType for HomeScreen to detect voice messages
+                    },
+                    lastMessageAt: firestore.FieldValue.serverTimestamp(),
+                    lastMessageSenderId: currentUserUid,
+                    lastMessageTime: firestore.FieldValue.serverTimestamp(),
+                    updatedAt: firestore.FieldValue.serverTimestamp(),
+                });
+                await batch.commit();
+                
+                console.log('[ChatScreen] ✅ Chat room lastMessage updated:', lastMessageText);
+            } catch (error) {
+                console.log('[ChatScreen] Error sending media message:', error);
+                Alert.alert('Error', 'Failed to send media. Please try again.');
+            }
+        },
+        [chatId, currentUserUid],
+    );
+
     /* ==================== SEND MESSAGE ==================== */
     const handleSendMessage = useCallback(async () => {
-        if (!text.trim() || !currentUserUid) return;
+        // Allow sending if there's text OR pending media
+        if ((!text.trim() && !pendingMedia) || !currentUserUid) return;
 
-        const messageText: string = text;
+        const messageText: string = text.trim();
+        const mediaToSend = pendingMedia;
+        
+        // Clear pending media immediately (optimistic UI)
+        setPendingMedia(null);
         setText('');
         prevTextRef.current = '';
+
+        // If there's pending media, send it first
+        if (mediaToSend) {
+            try {
+                await sendMediaMessage(mediaToSend.file, mediaToSend.mediaType);
+            } catch (error) {
+                console.log('[ChatScreen] Error sending media message:', error);
+                // Media send failed - could restore pendingMedia here if needed
+            }
+        }
+
+        // If there's text, send it as a separate message (or combine with media if needed)
+        if (!messageText) {
+            // Only media was sent, no text message needed
+            return;
+        }
 
         // Handle Meta AI chat - call backend API (with optimistic UI)
         if (isMetaAIChat) {
@@ -619,13 +883,16 @@ export const ChatScreen = () => {
             currentUserUid;
         
         const messageRef = await messagesRef.add({
+            messageType: 'text',
             text: messageText,
+            mediaUrl: null,
+            mediaType: null,
             senderId: currentUserUid,
             createdAt: firestore.FieldValue.serverTimestamp(),
             seen: false,
             delivered: !selfChat,
-            seenBy: [], // Array of user UIDs who have seen this message
-        });
+            seenBy: [],
+          });
 
         // For self-chat: mark as delivered immediately, then as seen after 1 second
         if (selfChat) {
@@ -674,7 +941,7 @@ export const ChatScreen = () => {
         await chatRoomRef.update(updateData);
         // Inverted FlatList will keep view pinned to bottom when user is already there
         // so no manual scroll is needed here.
-    }, [text, chatId, currentUserUid, isMetaAIChat, messages]);
+    }, [text, pendingMedia, chatId, currentUserUid, isMetaAIChat, messages, sendMediaMessage]);
 
     /* ==================== DELETE CHAT ==================== */
     const handleDeleteChatConfirm = useCallback(() => {
@@ -821,32 +1088,441 @@ export const ChatScreen = () => {
         setMenuVisible(false);
     }, []);
 
+    /* ==================== MEDIA PICKER HANDLERS ==================== */
+    const handleAttachDocument = useCallback(async () => {
+        const file = await pickDocument();
+        if (!file) return;
+
+        const rawType: string = (file as any).type || (file as any).mimeType || '';
+        const isAudio = rawType.startsWith('audio/');
+        const mediaType: 'audio' | 'file' = isAudio ? 'audio' : 'file';
+
+        // Store in pending state instead of sending immediately
+        setPendingMedia({ file, mediaType });
+    }, []);
+
+    const handlePickMedia = useCallback(async () => {
+        const file = await pickImageOrVideo();
+        if (!file) return;
+
+        const rawType: string = (file as any).type || '';
+        const isVideo = rawType.startsWith('video/');
+        const mediaType: 'image' | 'video' = isVideo ? 'video' : 'image';
+
+        // Store in pending state instead of sending immediately
+        setPendingMedia({ file, mediaType });
+    }, []);
+
+    const handleOpenCamera = useCallback(async () => {
+        const file = await openCamera();
+        if (!file) return;
+
+        const rawType: string = (file as any).type || '';
+        const isVideo = rawType.startsWith('video/');
+        const mediaType: 'image' | 'video' = isVideo ? 'video' : 'image';
+
+        // Store in pending state instead of sending immediately
+        setPendingMedia({ file, mediaType });
+    }, []);
+
+    /* ==================== VOICE RECORDING HANDLERS ==================== */
+    const requestAudioPermission = useCallback(async (): Promise<boolean> => {
+        if (Platform.OS === 'android') {
+            try {
+                // Request RECORD_AUDIO permission (required for all Android versions)
+                const recordAudioGranted = await PermissionsAndroid.request(
+                    PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+                    {
+                        title: 'Microphone Permission',
+                        message: 'WhatsApp needs access to your microphone to record voice messages.',
+                        buttonNeutral: 'Ask Me Later',
+                        buttonNegative: 'Cancel',
+                        buttonPositive: 'OK',
+                    }
+                );
+
+                if (recordAudioGranted !== PermissionsAndroid.RESULTS.GRANTED) {
+                    return false;
+                }
+
+                // Android 13+ (API 33+): Request READ_MEDIA_AUDIO for accessing audio files
+                if (Platform.Version >= 33) {
+                    try {
+                        const readMediaAudioGranted = await PermissionsAndroid.request(
+                            PermissionsAndroid.PERMISSIONS.READ_MEDIA_AUDIO,
+                            {
+                                title: 'Audio Access Permission',
+                                message: 'WhatsApp needs access to audio files to send voice messages.',
+                                buttonNeutral: 'Ask Me Later',
+                                buttonNegative: 'Cancel',
+                                buttonPositive: 'OK',
+                            }
+                        );
+                        // READ_MEDIA_AUDIO is optional for recording, but required for accessing files
+                        // Continue even if denied - recording will still work
+                        if (readMediaAudioGranted !== PermissionsAndroid.RESULTS.GRANTED) {
+                            console.warn('[ChatScreen] READ_MEDIA_AUDIO permission denied - recording will still work');
+                        }
+                    } catch (mediaError) {
+                        // Permission might not be available on older devices - ignore
+                        console.warn('[ChatScreen] READ_MEDIA_AUDIO permission not available:', mediaError);
+                    }
+                }
+
+                // Android < 10 (API < 29): Request WRITE_EXTERNAL_STORAGE for legacy storage
+                if (Platform.Version < 29) {
+                    const writeStorageGranted = await PermissionsAndroid.request(
+                        PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+                        {
+                            title: 'Storage Permission',
+                            message: 'WhatsApp needs access to storage to save voice messages.',
+                            buttonNeutral: 'Ask Me Later',
+                            buttonNegative: 'Cancel',
+                            buttonPositive: 'OK',
+                        }
+                    );
+                    
+                    return writeStorageGranted === PermissionsAndroid.RESULTS.GRANTED;
+                }
+
+                // Android 10-12: RECORD_AUDIO is sufficient (scoped storage handles the rest)
+                return true;
+            } catch (err) {
+                console.warn('[ChatScreen] Error requesting audio permission:', err);
+                return false;
+            }
+        }
+        // iOS permissions are handled via Info.plist - system will prompt automatically
+        return true;
+    }, []);
+
+    const handleStartRecording = useCallback(async () => {
+        // Prevent starting if already recording
+        if (isRecording || recordingStartedRef.current || !currentUserUid) {
+            console.warn('[ChatScreen] Cannot start recording: already recording or invalid state');
+            return;
+        }
+
+        // Check if audio recorder is available
+        if (!audioRecorderPlayer.current) {
+            Alert.alert(
+                'Voice Recording Unavailable',
+                'Please install react-native-audio-recorder-player to enable voice messages.\n\nRun: npm install react-native-audio-recorder-player'
+            );
+            return;
+        }
+
+        // Request permission first - abort if not granted
+        const hasPermission = await requestAudioPermission();
+        if (!hasPermission) {
+            Alert.alert('Permission Denied', 'Microphone permission is required to record voice messages.');
+            return;
+        }
+
+        // Ensure any previous recording is stopped
+        try {
+            if (audioRecorderPlayer.current && recordingPathRef.current) {
+                await audioRecorderPlayer.current.stopRecorder().catch(() => {});
+            }
+        } catch (e) {
+            // Ignore errors when stopping non-existent recorder
+        }
+
+        // Reset state before starting
+        recordingStartedRef.current = false;
+        recordingPathRef.current = null;
+        setRecordSecs(0);
+
+        try {
+            // Generate absolute file path for audio recording (REQUIRED for Android 10+ scoped storage)
+            // Android 10+ requires absolute paths to app-scoped directories (cache or documents)
+            // Relative paths like "voice_xxx.mp4" attempt to write to read-only filesystem → EROFS error
+            const timestamp = Date.now();
+            let filePath: string;
+            
+            if (Platform.OS === 'android') {
+                // Android: Use cache directory (app-scoped, writable, no permissions needed)
+                const cacheDir = RNFS.CachesDirectoryPath;
+                if (!cacheDir || cacheDir.trim() === '') {
+                    throw new Error('Failed to get Android cache directory path');
+                }
+                
+                // Ensure cache directory exists (safety check)
+                const dirExists = await RNFS.exists(cacheDir);
+                if (!dirExists) {
+                    await RNFS.mkdir(cacheDir);
+                }
+                
+                filePath = `${cacheDir}/voice_${timestamp}.mp4`;
+            } else {
+                // iOS: Use document directory (app-scoped, writable)
+                const documentDir = RNFS.DocumentDirectoryPath;
+                if (!documentDir || documentDir.trim() === '') {
+                    throw new Error('Failed to get iOS document directory path');
+                }
+                
+                // Ensure document directory exists (safety check)
+                const dirExists = await RNFS.exists(documentDir);
+                if (!dirExists) {
+                    await RNFS.mkdir(documentDir);
+                }
+                
+                filePath = `${documentDir}/voice_${timestamp}.m4a`;
+            }
+
+            // Ensure path is never null or empty
+            if (!filePath || filePath.trim() === '') {
+                throw new Error('Failed to generate audio file path');
+            }
+
+            console.log('[ChatScreen] Starting recorder with absolute path:', filePath);
+
+            // Android-specific audio configuration
+            // Using exact property names expected by react-native-audio-recorder-player
+            // These values must match MediaRecorder constants exactly
+            const audioSet = Platform.OS === 'android' ? {
+                AudioSourceAndroid: 1, // MediaRecorder.AudioSource.MIC = 1
+                OutputFormatAndroid: 2, // MediaRecorder.OutputFormat.MPEG_4 = 2
+                AudioEncoderAndroid: 3, // MediaRecorder.AudioEncoder.AAC = 3
+            } : {};
+
+            // Ensure recorder is ready - remove any existing listeners
+            try {
+                if (audioRecorderPlayer.current) {
+                    audioRecorderPlayer.current.removeRecordBackListener();
+                }
+            } catch (cleanupError) {
+                // Ignore cleanup errors - recorder might not be initialized
+            }
+
+            // Start recorder with valid path and configuration
+            // For Android: pass audioSet, for iOS: pass undefined or no second param
+            const uri = Platform.OS === 'android' 
+                ? await audioRecorderPlayer.current.startRecorder(filePath, audioSet)
+                : await audioRecorderPlayer.current.startRecorder(filePath);
+            
+            // Validate that we got a valid URI back
+            if (!uri || typeof uri !== 'string' || uri.trim() === '') {
+                throw new Error('Invalid recording URI returned from native module');
+            }
+
+            recordingPathRef.current = uri;
+            recordingStartedRef.current = true;
+            setIsRecording(true);
+            setRecordSecs(0);
+
+            // Start timer for recording duration
+            if (recordTimerRef.current) {
+                clearInterval(recordTimerRef.current);
+            }
+            recordTimerRef.current = setInterval(() => {
+                setRecordSecs(prev => prev + 1);
+            }, 1000);
+
+            console.log('[ChatScreen] ✅ Recording started successfully:', uri);
+        } catch (error: any) {
+            console.error('[ChatScreen] ❌ Error starting recording:', error);
+            // Reset all recording state on error
+            recordingStartedRef.current = false;
+            recordingPathRef.current = null;
+            setIsRecording(false);
+            setRecordSecs(0);
+            if (recordTimerRef.current) {
+                clearInterval(recordTimerRef.current);
+                recordTimerRef.current = null;
+            }
+            
+            // Try to stop recorder if it was partially started
+            try {
+                if (audioRecorderPlayer.current) {
+                    await audioRecorderPlayer.current.stopRecorder().catch(() => {});
+                }
+            } catch (e) {
+                // Ignore cleanup errors
+            }
+            
+            Alert.alert(
+                'Recording Error', 
+                `Failed to start recording: ${error?.message || 'Unknown error'}\n\nPlease try again.`
+            );
+        }
+    }, [isRecording, currentUserUid, requestAudioPermission]);
+
+    const handleCancelRecording = useCallback(async () => {
+        // Cancel recording: stop recorder, delete file, don't send
+        if (!recordingStartedRef.current || !recordingPathRef.current || !audioRecorderPlayer.current) {
+            return;
+        }
+
+        try {
+            // Stop recorder
+            await audioRecorderPlayer.current.stopRecorder().catch(() => {});
+            audioRecorderPlayer.current.removeRecordBackListener();
+
+            // Delete the audio file (optional - can be cleaned up by system later)
+            try {
+                if (recordingPathRef.current) {
+                    const exists = await RNFS.exists(recordingPathRef.current);
+                    if (exists) {
+                        await RNFS.unlink(recordingPathRef.current);
+                    }
+                }
+            } catch (deleteError) {
+                // Ignore delete errors - file will be cleaned up by system
+            }
+        } catch (error) {
+            console.warn('[ChatScreen] Error canceling recording:', error);
+        } finally {
+            // Reset all state
+            recordingStartedRef.current = false;
+            setIsRecording(false);
+            setIsSlidingToCancel(false);
+            recordingPathRef.current = null;
+            setRecordSecs(0);
+            if (recordTimerRef.current) {
+                clearInterval(recordTimerRef.current);
+                recordTimerRef.current = null;
+            }
+        }
+    }, []);
+
+    const handleStopRecordingAndSend = useCallback(async (wasCancelled: boolean = false) => {
+        // If cancelled, don't send
+        if (wasCancelled || isSlidingToCancel) {
+            await handleCancelRecording();
+            return;
+        }
+
+        // Only stop if recording was actually started successfully
+        if (!recordingStartedRef.current || !isRecording || !recordingPathRef.current || !audioRecorderPlayer.current) {
+            // Reset state if stop was called but recording wasn't started
+            recordingStartedRef.current = false;
+            setIsRecording(false);
+            setIsSlidingToCancel(false);
+            recordingPathRef.current = null;
+            setRecordSecs(0);
+            if (recordTimerRef.current) {
+                clearInterval(recordTimerRef.current);
+                recordTimerRef.current = null;
+            }
+            return;
+        }
+
+        // Stop timer
+        if (recordTimerRef.current) {
+            clearInterval(recordTimerRef.current);
+            recordTimerRef.current = null;
+        }
+
+        const currentPath = recordingPathRef.current;
+        const finalRecordSecs = recordSecs;
+
+        // Reset recording state BEFORE stopping (to prevent double-stops)
+        recordingStartedRef.current = false;
+        setIsRecording(false);
+        setRecordSecs(0);
+
+        try {
+            console.log('[ChatScreen] Stopping recorder...');
+            
+            // Stop the recorder
+            await audioRecorderPlayer.current.stopRecorder();
+            audioRecorderPlayer.current.removeRecordBackListener();
+            
+            console.log('[ChatScreen] Recorder stopped, extracting duration...');
+            
+            // STEP 1: Extract actual audio duration from the file
+            // Priority 1: Try to get duration from audio file metadata
+            let actualDurationSecs = finalRecordSecs; // Fallback to timer duration
+            
+            try {
+                if (audioRecorderPlayer.current && currentPath) {
+                    // react-native-audio-recorder-player provides getDuration method
+                    const durationMs = await audioRecorderPlayer.current.getDuration?.(currentPath).catch(() => null);
+                    if (durationMs && durationMs > 0) {
+                        actualDurationSecs = Math.floor(durationMs / 1000); // Convert ms to seconds
+                        console.log('[ChatScreen] ✅ Duration extracted from file:', actualDurationSecs, 'seconds');
+                    } else {
+                        // Fallback to timer duration (accurate for recording)
+                        console.log('[ChatScreen] Using timer duration (fallback):', finalRecordSecs, 'seconds');
+                        actualDurationSecs = finalRecordSecs;
+                    }
+                }
+            } catch (durationError) {
+                // Use timer duration as final fallback
+                console.warn('[ChatScreen] ⚠️ Error extracting duration, using timer:', durationError);
+                actualDurationSecs = finalRecordSecs;
+            }
+            
+            // Ensure minimum duration of 1 second (recording must be at least 1 second)
+            if (actualDurationSecs < 1) {
+                actualDurationSecs = 1;
+            }
+            
+            console.log('[ChatScreen] ✅ Final audio duration:', actualDurationSecs, 'seconds');
+            
+            // Prepare audio file for upload
+            const audioFile = {
+                uri: currentPath,
+                type: Platform.select({
+                    ios: 'audio/m4a',
+                    android: 'audio/mp4',
+                }) || 'audio/mp4',
+                fileName: `voice_${Date.now()}.${Platform.OS === 'ios' ? 'm4a' : 'mp4'}`,
+            };
+
+            console.log('[ChatScreen] Uploading audio file...');
+
+            // Upload and send audio immediately (like WhatsApp)
+            // Pass actual duration so HomeScreen can show "🎤 Voice message (0:01)"
+            await sendMediaMessage(audioFile, 'audio', actualDurationSecs);
+            console.log(`[ChatScreen] ✅ Recording stopped and sent successfully (duration: ${actualDurationSecs}s)`);
+        } catch (error: any) {
+            console.error('[ChatScreen] ❌ Error stopping recording:', error);
+            
+            // Try to cleanup recorder
+            try {
+                if (audioRecorderPlayer.current) {
+                    await audioRecorderPlayer.current.stopRecorder().catch(() => {});
+                }
+            } catch (cleanupError) {
+                // Ignore cleanup errors
+            }
+            
+            Alert.alert(
+                'Recording Error', 
+                `Failed to stop recording: ${error?.message || 'Unknown error'}\n\nPlease try again.`
+            );
+        }
+    }, [isRecording, recordSecs, sendMediaMessage]);
+
     /* ==================== EMOJI / KEYBOARD TOGGLE ==================== */
+    // WhatsApp behavior: emoji/sticker button only manages keyboard focus
+    // Emojis come from system keyboard (user taps emoji button on their keyboard)
     const handleEmojiToggle = useCallback(() => {
         if (!inputRef.current) return;
 
-        if (isEmojiKeyboardOpen) {
-            // User tapped the keyboard icon while emoji panel is conceptually open.
-            // Workaround: briefly dismiss, then refocus TextInput so system shows normal text keyboard.
+        if (isKeyboardVisible) {
+            // Keyboard is open → dismiss it
             Keyboard.dismiss();
-            requestAnimationFrame(() => {
-                inputRef.current && inputRef.current.focus();
-            });
-            setIsEmojiKeyboardOpen(false);
         } else {
-            // User tapped emoji icon – keep TextInput focused and let the OS switch keyboard mode.
+            // Keyboard is closed → open it (focus TextInput)
             inputRef.current.focus();
-            setIsEmojiKeyboardOpen(true);
         }
-    }, [isEmojiKeyboardOpen]);
+    }, [isKeyboardVisible]);
 
-    // If keyboard is fully hidden (user swiped it down), reset toggle icon to emoji state.
+    // Track keyboard visibility to toggle icon correctly
     useEffect(() => {
+        const showSub = Keyboard.addListener('keyboardDidShow', () => {
+            setIsKeyboardVisible(true);
+        });
+
         const hideSub = Keyboard.addListener('keyboardDidHide', () => {
-            setIsEmojiKeyboardOpen(false);
+            setIsKeyboardVisible(false);
         });
 
         return () => {
+            showSub.remove();
             hideSub.remove();
         };
     }, []);
@@ -877,22 +1553,139 @@ export const ChatScreen = () => {
         ];
     }
 
+    const handleOpenMediaUrl = useCallback(async (url?: string | null) => {
+        if (!url) return;
+        try {
+            await Linking.openURL(url);
+        } catch (error) {
+            console.log('[ChatScreen] Error opening media URL:', error);
+            Alert.alert('Error', 'Unable to open media.');
+        }
+    }, []);
+
+    const stopAudioPlayback = useCallback(async () => {
+        if (!audioRecorderPlayer.current) {
+            return;
+        }
+        try {
+            await audioRecorderPlayer.current.stopPlayer?.();
+            audioRecorderPlayer.current.removePlayBackListener?.();
+        } catch (error) {
+            console.warn('[ChatScreen] Error stopping audio playback:', error);
+        } finally {
+            setIsAudioPlaying(false);
+            setCurrentlyPlayingMessageId(null);
+            setPlaybackSecs(0);
+        }
+    }, []);
+
+    const handleToggleAudioPlayback = useCallback(
+        async (message: any) => {
+            if (!audioRecorderPlayer.current) {
+                Alert.alert(
+                    'Voice Playback Unavailable',
+                    'Audio playback requires react-native-audio-recorder-player.\n\nRun: npm install react-native-audio-recorder-player'
+                );
+                return;
+            }
+
+            if (!message?.mediaUrl) {
+                return;
+            }
+
+            const isThisPlaying =
+                currentlyPlayingMessageId === message.id && isAudioPlaying;
+
+            // If this message is already playing → stop (toggle pause/stop)
+            if (isThisPlaying) {
+                await stopAudioPlayback();
+                return;
+            }
+
+            // Stop any other playback first
+            await stopAudioPlayback();
+
+            try {
+                console.log('[ChatScreen] ▶️ Starting audio playback:', message.mediaUrl);
+                await audioRecorderPlayer.current.startPlayer(message.mediaUrl);
+                audioRecorderPlayer.current.setVolume?.(1.0);
+
+                setCurrentlyPlayingMessageId(message.id);
+                setIsAudioPlaying(true);
+                setPlaybackSecs(0);
+                
+                // Extract duration immediately when starting playback (if not already stored)
+                // This ensures duration is available even if it wasn't stored during recording
+                try {
+                    const duration = await audioRecorderPlayer.current.getDuration?.(message.mediaUrl).catch(() => null);
+                    if (duration && duration > 0 && message.id) {
+                        const totalSecs = Math.floor(duration / 1000);
+                        if (totalSecs > 0) {
+                            messageDurationsRef.current[message.id] = totalSecs;
+                            setExtractedDurations(prev => ({
+                                ...prev,
+                                [message.id]: totalSecs,
+                            }));
+                        }
+                    }
+                } catch (error) {
+                    // Ignore - duration will be extracted from playback listener
+                }
+
+                audioRecorderPlayer.current.addPlayBackListener((e: any) => {
+                    if (!e) return;
+                    const currentMs = e.currentPosition ?? 0;
+                    const durationMs = e.duration ?? 0;
+
+                    // Update playback position (starts from 0:00 and counts up to duration)
+                    const secs = Math.floor(currentMs / 1000);
+                    setPlaybackSecs(secs);
+
+                    // Extract and store duration if not already stored in message
+                    // This ensures receiver sees correct duration even if sender didn't store it
+                    if (durationMs > 0 && !message.duration && !message.durationSecs) {
+                        const totalSecs = Math.floor(durationMs / 1000);
+                        // Store duration in ref and state for UI display (UI-only, not Firestore)
+                        if (totalSecs > 0 && message.id) {
+                            messageDurationsRef.current[message.id] = totalSecs;
+                            setExtractedDurations(prev => ({
+                                ...prev,
+                                [message.id]: totalSecs,
+                            }));
+                        }
+                    }
+
+                    if (durationMs > 0 && currentMs >= durationMs) {
+                        // Playback finished
+                        stopAudioPlayback();
+                    }
+                });
+            } catch (error: any) {
+                console.error('[ChatScreen] ❌ Error playing audio message:', error);
+                Alert.alert('Error', 'Failed to play audio message. Please try again.');
+                await stopAudioPlayback();
+            }
+        },
+        [audioRecorderPlayer, currentlyPlayingMessageId, isAudioPlaying, stopAudioPlayback],
+    );
+
     const renderMessage = ({ item, index }: any) => {
         // Meta AI typing indicator bubble (UI-only)
         if (item.isTypingIndicator) {
             return (
-                <View style={[chatScreenStyles.messageRow, chatScreenStyles.messageRowOther]}>
-                    <View style={[chatScreenStyles.messageBubble, chatScreenStyles.otherMessage]}>
-                        <View style={chatScreenStyles.typingDotsRow}>
-                            <View style={chatScreenStyles.typingDot} />
-                            <View style={chatScreenStyles.typingDot} />
-                            <View style={chatScreenStyles.typingDot} />
+                <View style={[styles.messageRow, styles.messageRowOther]}>
+                    <View style={[styles.messageBubble, styles.otherMessage]}>
+                        <View style={styles.typingDotsRow}>
+                            <View style={styles.typingDot} />
+                            <View style={styles.typingDot} />
+                            <View style={styles.typingDot} />
                         </View>
                     </View>
                 </View>
             );
         }
         const isMe = item.senderId === currentUserUid;
+        const messageType: 'text' | 'media' = item.messageType || 'text';
         // Use formatMessageTime - shows only time (hh:mm AM/PM), no date
         const timeStr = formatMessageTime(item.createdAt);
         
@@ -929,32 +1722,207 @@ export const ChatScreen = () => {
                 ? formatDateSeparator(messageDate)
                 : null;
 
+        const isAudioMedia =
+            messageType === 'media' && item.mediaType === 'audio' && !!item.mediaUrl;
+        const isThisAudioPlaying =
+            isAudioMedia && currentlyPlayingMessageId === item.id && isAudioPlaying;
+
+        // STEP 4: Format duration correctly (0:SS or M:SS)
+        const formatDuration = (totalSecs: number): string => {
+            if (!totalSecs || totalSecs < 0) {
+                return '0:00';
+            }
+            const minutes = Math.floor(totalSecs / 60);
+            const seconds = totalSecs % 60;
+            return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        };
+
+        const isSelected = selectedMessageIds.has(item.id);
+        const isSelectionMode = selectedMessageIds.size > 0;
+
         return (
             <View>
                 {showDateSeparator && dateSeparatorLabel && (
                     <DateSeparator label={dateSeparatorLabel} />
                 )}
-                <View
+                <TouchableOpacity
                     style={[
-                        chatScreenStyles.messageRow,
-                        isMe ? chatScreenStyles.messageRowMe : chatScreenStyles.messageRowOther,
+                        styles.messageRow,
+                        isMe ? styles.messageRowMe : styles.messageRowOther,
+                        isSelected && styles.messageSelected,
                     ]}
+                    onLongPress={() => {
+                        // Long press: toggle selection ON
+                        setSelectedMessageIds(prev => {
+                            const newSet = new Set(prev);
+                            newSet.add(item.id);
+                            return newSet;
+                        });
+                    }}
+                    onPress={() => {
+                        // Normal tap: if selection mode is active, toggle selection
+                        // Otherwise, normal message behavior (disabled during selection)
+                        if (isSelectionMode) {
+                            setSelectedMessageIds(prev => {
+                                const newSet = new Set(prev);
+                                if (newSet.has(item.id)) {
+                                    newSet.delete(item.id);
+                                } else {
+                                    newSet.add(item.id);
+                                }
+                                return newSet;
+                            });
+                        }
+                    }}
+                    activeOpacity={isSelectionMode ? 0.7 : 1}
                 >
                     <View
                         style={[
-                            chatScreenStyles.messageBubble,
+                            styles.messageBubble,
                             isMe 
-                                ? [chatScreenStyles.myMessage, { backgroundColor: theme.bubbleSent }]
-                                : [chatScreenStyles.otherMessage, { backgroundColor: theme.bubbleReceived }],
+                                ? [styles.myMessage, { backgroundColor: theme.bubbleSent }]
+                                : [styles.otherMessage, { backgroundColor: theme.bubbleReceived }],
+                            isSelected && { opacity: 0.7 },
                         ]}
                     >
-                        <Text style={[chatScreenStyles.messageText, { color: theme.textPrimary }]}>
-                            {item.text}
-                        </Text>
+                        {messageType === 'media' && item.mediaUrl ? (
+                            item.mediaType === 'image' ? (
+                                <Image
+                                    source={{ uri: item.mediaUrl }}
+                                    style={styles.mediaImage}
+                                    resizeMode="cover"
+                                />
+                            ) : (
+                                item.mediaType === 'audio' ? (
+                                    <View style={styles.voiceMessageContainer}>
+                                <TouchableOpacity
+                                            style={styles.voiceMessageRow}
+                                            activeOpacity={0.8}
+                                            onPress={() => {
+                                                // Disable playback during selection mode
+                                                if (!isSelectionMode) {
+                                                    handleToggleAudioPlayback(item);
+                                                }
+                                            }}
+                                            disabled={isSelectionMode}
+                                        >
+                                            {/* Play/Pause button - circular, WhatsApp-like */}
+                                            <View style={styles.voicePlayButton}>
+                                                <Image
+                                                    source={
+                                                        isThisAudioPlaying
+                                                            ? require('../../../assets/icons/pause.png')
+                                                            : require('../../../assets/icons/play.png')
+                                                    }
+                                                    style={[
+                                                        styles.voicePlayIcon,
+                                                        {
+                                                            // Grey in light theme, white in dark theme
+                                                            tintColor: isDark
+                                                                ? theme.white
+                                                                : theme.textSecondary,
+                                                        },
+                                                    ]}
+                                                    resizeMode="contain"
+                                                />
+                                            </View>
+                                            
+                                            {/* Duration next to play button - grey in light theme, white in dark theme */}
+                                            <Text
+                                                style={[
+                                                    styles.voiceDurationText,
+                                                    {
+                                                        color: isDark
+                                                            ? theme.white
+                                                            : theme.textSecondary,
+                                                    },
+                                                ]}
+                                            >
+                                                {formatDuration(
+                                                    isThisAudioPlaying 
+                                                        ? playbackSecs 
+                                                        : (item.duration || item.durationSecs || extractedDurations[item.id] || messageDurationsRef.current[item.id] || 0),
+                                                )}
+                                            </Text>
+                                            
+                                            {/* Waveform with simple progress indication (left → right) */}
+                                            <View style={styles.voiceWaveform}>
+                                                {Array.from({ length: 20 }).map((_, i) => {
+                                                    const totalDuration =
+                                                        item.duration ||
+                                                        item.durationSecs ||
+                                                        extractedDurations[item.id] ||
+                                                        messageDurationsRef.current[item.id] ||
+                                                        0;
+                                                    const barsCount = 20;
+                                                    const progressRatio =
+                                                        isThisAudioPlaying && totalDuration > 0
+                                                            ? Math.min(
+                                                                  playbackSecs / totalDuration,
+                                                                  1,
+                                                              )
+                                                            : 0;
+                                                    const filledBars = Math.round(progressRatio * barsCount);
+
+                                                    // Generate consistent waveform heights based on message ID
+                                                    const seed = (item.id?.charCodeAt(0) || 0) + i;
+                                                    const height = (seed % 8) + 4; // Heights between 4-11
+                                                    return (
+                                                        <View
+                                                            key={i}
+                                                            style={[
+                                                                styles.voiceWaveformBar,
+                                                                {
+                                                                    height,
+                                                                    // Same color as icon: grey in light theme, white in dark theme
+                                                                    backgroundColor: isDark
+                                                                        ? theme.white
+                                                                        : theme.textSecondary,
+                                                                    opacity:
+                                                                        i < filledBars
+                                                                            ? 1
+                                                                            : 0.35,
+                                                                }
+                                                            ]}
+                                                        />
+                                                    );
+                                                })}
+                                            </View>
+                                        </TouchableOpacity>
+                                    </View>
+                                ) : (
+                                    <TouchableOpacity
+                                        onPress={() => {
+                                            // Disable media opening during selection mode
+                                            if (!isSelectionMode) {
+                                                handleOpenMediaUrl(item.mediaUrl);
+                                            }
+                                        }}
+                                    activeOpacity={0.7}
+                                        disabled={isSelectionMode}
+                                    >
+                                        <Text
+                                            style={[
+                                                styles.mediaFileText,
+                                                { color: theme.whatsappBlue },
+                                            ]}
+                                        >
+                                        {item.mediaType === 'video'
+                                            ? 'Open video'
+                                            : 'Open file'}
+                                    </Text>
+                                </TouchableOpacity>
+                                )
+                            )
+                        ) : (
+                            <Text style={[styles.messageText, { color: theme.textPrimary }]}>
+                                {item.text}
+                            </Text>
+                        )}
                         
                         {/* Timestamp and ticks inside bubble */}
-                        <View style={chatScreenStyles.messageFooter}>
-                            <Text style={[chatScreenStyles.messageTime, { color: theme.bubbleTimestamp }]}>
+                        <View style={styles.messageFooter}>
+                            <Text style={[styles.messageTime, { color: theme.bubbleTimestamp }]}>
                                 {timeStr}
                             </Text>
                             {isMe && (() => {
@@ -969,7 +1937,7 @@ export const ChatScreen = () => {
                                     return (
                                         <Text
                                             style={[
-                                                chatScreenStyles.tickText,
+                                                styles.tickText,
                                                 { color: theme.textTertiary }, // Always gray double tick for Meta AI
                                             ]}
                                         >
@@ -1010,7 +1978,7 @@ export const ChatScreen = () => {
                                 return (
                                     <Text
                                         style={[
-                                            chatScreenStyles.tickText,
+                                            styles.tickText,
                                             { color: finalIsSeen ? theme.whatsappBlue : theme.textTertiary },
                                         ]}
                                     >
@@ -1020,28 +1988,474 @@ export const ChatScreen = () => {
                             })()}
                         </View>
                     </View>
-                </View>
+                </TouchableOpacity>
             </View>
         );
     };
 
+    /* ==================== DELETE MESSAGES ==================== */
+    /**
+     * Extract Cloudinary public_id from URL.
+     *
+     * For audio/files we keep the extension in the public_id because Cloudinary
+     * often stores raw/audio assets with the extension as part of public_id:
+     *   public_id: "whatsapp_clone/xyz123.mp4"
+     *
+     * For images / videos we strip the extension because their public_id is
+     * usually stored without it:
+     *   URL: .../upload/v123/whatsapp_clone/abc123.jpg
+     *   public_id: "whatsapp_clone/abc123"
+     */
+    const extractCloudinaryPublicId = (
+        url: string,
+        mediaType?: 'audio' | 'video' | 'image' | 'file' | string
+    ): string | null => {
+        try {
+            // Cloudinary URL format: https://res.cloudinary.com/{cloud_name}/{resource_type}/upload/v{version}/{public_id}.{format}
+            // Example with folder: https://res.cloudinary.com/dzhaqez4q/image/upload/v1234567890/whatsapp_clone/abc123.jpg
+            // Example without folder: https://res.cloudinary.com/dzhaqez4q/image/upload/v1234567890/abc123.jpg
+            // Match everything after /upload/v{version}/
+            const match = url.match(/\/upload\/(?:v\d+\/)?(.+)$/);
+            if (match && match[1]) {
+                const fullId = match[1]; // may include extension, e.g. whatsapp_clone/xyz123.mp4
+
+                // For audio/file, keep extension to match Cloudinary's raw/audio public_id
+                if (mediaType === 'audio' || mediaType === 'file') {
+                    console.log('[ChatScreen] ✅ Extracted public_id (audio/file, with ext):', {
+                        url,
+                        publicId: fullId,
+                    });
+                    return fullId;
+                }
+
+                // For image/video, strip final extension if present
+                const withoutExt = fullId.replace(/\.[^.]+$/, '');
+                console.log('[ChatScreen] ✅ Extracted public_id:', {
+                    url,
+                    publicId: withoutExt,
+                });
+                return withoutExt;
+            }
+            console.warn('[ChatScreen] ⚠️ Could not extract public_id from URL:', url);
+            return null;
+        } catch (error) {
+            console.error('[ChatScreen] Error extracting Cloudinary public_id:', error);
+            return null;
+        }
+    };
+
+    /**
+     * Delete media from Cloudinary via backend API
+     * This ensures secure deletion using API credentials stored on backend
+     */
+    const deleteFromCloudinary = async (publicId: string, resourceType: string = 'image'): Promise<boolean> => {
+        try {
+            console.log('[ChatScreen] 🗑️ Deleting from Cloudinary via backend:', { publicId, resourceType });
+
+            const response = await fetch(`${API_BASE_URL}/api/cloudinary/delete`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    publicId,
+                    resourceType,
+                }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+                console.warn('[ChatScreen] ⚠️ Backend Cloudinary delete failed:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    error: errorData.error || errorData,
+                    publicId,
+                    resourceType,
+                });
+                // Return false but don't block Firestore deletion
+                return false;
+            }
+
+            const data = await response.json();
+            if (data.success) {
+                console.log('[ChatScreen] ✅ Cloudinary delete successful via backend:', {
+                    publicId,
+                    resourceType,
+                    result: data.result,
+                });
+                return true;
+            }
+
+            console.warn('[ChatScreen] ⚠️ Backend returned success=false:', data);
+            return false;
+        } catch (error: any) {
+            console.warn('[ChatScreen] ⚠️ Error calling backend delete API (non-critical):', {
+                error: error.message || error,
+                publicId,
+                resourceType,
+            });
+            // Don't throw - Firestore cleanup is more important
+            return false;
+        }
+    };
+
+    /**
+     * Delete multiple media files from Cloudinary via backend API (batch operation)
+     */
+    /**
+     * Delete multiple media files from Cloudinary via backend API (batch operation)
+     * Backend automatically handles resource type detection (tries 'video' first for audio files)
+     */
+    const deleteMultipleFromCloudinary = async (
+        files: Array<{ 
+            publicId: string; 
+            resourceType: 'image' | 'video' | 'raw';
+            originalMediaType?: 'audio' | 'video' | 'image' | 'file';
+        }>
+    ): Promise<boolean> => {
+        if (files.length === 0) {
+            return true;
+        }
+
+        try {
+            console.log('[ChatScreen] 🗑️ Deleting multiple files from Cloudinary via backend:', {
+                count: files.length,
+                files: files.map(f => ({ 
+                    publicId: f.publicId, 
+                    resourceType: f.resourceType,
+                    originalMediaType: f.originalMediaType,
+                })),
+            });
+
+            const response = await fetch(`${API_BASE_URL}/api/cloudinary/delete-multiple`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ files }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+                console.warn('[ChatScreen] ⚠️ Backend batch delete failed:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    error: errorData.error || errorData,
+                    count: files.length,
+                });
+                return false;
+            }
+
+            const data = await response.json();
+            if (data.success) {
+                // Log detailed results including actual resource types used
+                const successfulDeletes = data.results.filter((r: any) => r.success && r.result === 'ok');
+                const notFoundDeletes = data.results.filter((r: any) => r.success && r.result === 'not found');
+                const failedDeletes = data.results.filter((r: any) => !r.success);
+
+                console.log('[ChatScreen] ✅ Batch Cloudinary delete completed via backend:', {
+                    total: data.total,
+                    successful: data.successful,
+                    failed: data.failed,
+                    deleted: successfulDeletes.length,
+                    notFound: notFoundDeletes.length,
+                    failedCount: failedDeletes.length,
+                    results: data.results.map((r: any) => ({
+                        publicId: r.publicId,
+                        success: r.success,
+                        result: r.result,
+                        actualResourceType: r.actualResourceType,
+                        error: r.error,
+                    })),
+                });
+
+                // Consider it successful if all files were either deleted or not found
+                // (not found means file doesn't exist, which is fine)
+                return failedDeletes.length === 0;
+            }
+
+            console.warn('[ChatScreen] ⚠️ Backend batch delete returned success=false:', data);
+            return false;
+        } catch (error: any) {
+            console.warn('[ChatScreen] ⚠️ Error calling backend batch delete API (non-critical):', {
+                error: error.message || error,
+                count: files.length,
+            });
+            return false;
+        }
+    };
+
+    const handleDeleteMessages = useCallback(async () => {
+        if (selectedMessageIds.size === 0 || !currentUserUid || !chatId) {
+            return;
+        }
+
+        // Show confirmation dialog
+        Alert.alert(
+            selectedMessageIds.size === 1 ? 'Delete message?' : `Delete ${selectedMessageIds.size} messages?`,
+            selectedMessageIds.size === 1
+                ? 'This message will be deleted.'
+                : `These ${selectedMessageIds.size} messages will be deleted.`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            const messagesToDelete = Array.from(selectedMessageIds);
+                            const chatRoomRef = firestore()
+                                .collection('chatRooms')
+                                .doc(chatId);
+                            const messagesRef = chatRoomRef.collection('messages');
+
+                            // Get message data before deleting (to check for media)
+                            const messageSnaps = await Promise.all(
+                                messagesToDelete.map(id => messagesRef.doc(id).get())
+                            );
+
+                            // Delete from Firestore and collect media URLs
+                            // Use batch delete for atomicity and better performance
+                            const batch = firestore().batch();
+                            const mediaToDelete: Array<{ url: string; mediaType: string }> = [];
+                            
+                            for (const snap of messageSnaps) {
+                                if (!snap.exists) continue;
+                                
+                                const messageData = snap.data();
+                                
+                                // Check if message has media
+                                if (messageData?.mediaUrl && messageData?.mediaType) {
+                                    mediaToDelete.push({
+                                        url: messageData.mediaUrl,
+                                        mediaType: messageData.mediaType,
+                                    });
+                                }
+                                
+                                // Add to batch for deletion
+                                batch.delete(snap.ref);
+                            }
+                            
+                            // Commit batch delete (atomic operation)
+                            await batch.commit();
+
+                            // Delete from Cloudinary via backend (only for media messages)
+                            // Collect all files to delete for batch operation
+                            // Include originalMediaType to help backend detect correct resource_type
+                            const cloudinaryFiles: Array<{ 
+                                publicId: string; 
+                                resourceType: 'image' | 'video' | 'raw';
+                                originalMediaType?: 'audio' | 'video' | 'image' | 'file';
+                            }> = [];
+                            
+                            for (const media of mediaToDelete) {
+                                // Extract public_id with mediaType hint so audio/files keep extension
+                                const publicId = extractCloudinaryPublicId(
+                                    media.url,
+                                    media.mediaType as 'audio' | 'video' | 'image' | 'file' | undefined
+                                );
+                                if (publicId) {
+                                    // Determine resource type for initial attempt
+                                    // Backend will automatically try all resource types for robustness
+                                    let resourceType: 'image' | 'video' | 'raw' = 'image';
+                                    if (media.mediaType === 'video') {
+                                        resourceType = 'video';
+                                    } else if (media.mediaType === 'audio' || media.mediaType === 'file') {
+                                        resourceType = 'raw';
+                                    }
+                                    
+                                    cloudinaryFiles.push({ 
+                                        publicId, 
+                                        resourceType,
+                                        originalMediaType: media.mediaType as 'audio' | 'video' | 'image' | 'file',
+                                    });
+                                }
+                            }
+
+                            // Delete all files in batch via backend (non-blocking)
+                            if (cloudinaryFiles.length > 0) {
+                                deleteMultipleFromCloudinary(cloudinaryFiles).catch(error => {
+                                    console.warn('[ChatScreen] ⚠️ Batch Cloudinary deletion failed (non-critical):', error);
+                                });
+                            }
+
+                            // Update chat room lastMessage if deleted message was the last one
+                            const remainingMessagesSnap = await messagesRef
+                                .orderBy('createdAt', 'desc')
+                                .limit(1)
+                                .get();
+
+                            if (remainingMessagesSnap.empty) {
+                                // No messages left - clear lastMessage
+                                await chatRoomRef.update({
+                                    lastMessage: null,
+                                    lastMessageAt: null,
+                                    lastMessageTime: null,
+                                    lastMessageSenderId: null,
+                                    updatedAt: firestore.FieldValue.serverTimestamp(),
+                                });
+                            } else {
+                                // Update lastMessage to the most recent remaining message
+                                const lastMessageData = remainingMessagesSnap.docs[0].data();
+                                
+                                // Helper function to format duration
+                                const formatDuration = (secs: number) => {
+                                    const minutes = Math.floor(secs / 60);
+                                    const seconds = secs % 60;
+                                    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                                };
+                                
+                                const lastMessageText = lastMessageData.text || 
+                                    (lastMessageData.mediaType === 'audio' 
+                                        ? `🎤 Voice message (${formatDuration(lastMessageData.durationSecs || 0)})`
+                                        : lastMessageData.mediaType === 'image' 
+                                        ? '📷 Photo'
+                                        : lastMessageData.mediaType === 'video'
+                                        ? '🎥 Video'
+                                        : '📎 File');
+                                
+                                await chatRoomRef.update({
+                                    lastMessage: {
+                                        text: lastMessageText,
+                                        senderId: lastMessageData.senderId,
+                                        timestamp: lastMessageData.createdAt,
+                                        seenBy: lastMessageData.seenBy || [],
+                                        mediaType: lastMessageData.mediaType || null,
+                                    },
+                                    lastMessageAt: lastMessageData.createdAt,
+                                    lastMessageTime: lastMessageData.createdAt,
+                                    lastMessageSenderId: lastMessageData.senderId,
+                                    updatedAt: firestore.FieldValue.serverTimestamp(),
+                                });
+                            }
+
+                            // Clear selection
+                            setSelectedMessageIds(new Set());
+                            
+                            console.log('[ChatScreen] ✅ Deleted', messagesToDelete.length, 'message(s)');
+                        } catch (error: any) {
+                            console.error('[ChatScreen] ❌ Error deleting messages:', error);
+                            Alert.alert('Error', 'Failed to delete messages. Please try again.');
+                        }
+                    },
+                },
+            ]
+        );
+    }, [selectedMessageIds, currentUserUid, chatId]);
+
+    const handleClearSelection = useCallback(() => {
+        setSelectedMessageIds(new Set());
+    }, []);
+
+    // Clear selection when screen loses focus (user navigates away)
+    useEffect(() => {
+        const unsubscribe = navigation.addListener('blur', () => {
+            // Clear selection when navigating away
+            setSelectedMessageIds(new Set());
+        });
+
+        return unsubscribe;
+    }, [navigation]);
+
+    // Handle back button press - clear selection if in selection mode
+    useEffect(() => {
+        const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+            if (selectedMessageIds.size > 0) {
+                // If in selection mode, clear selection instead of navigating back
+                e.preventDefault();
+                setSelectedMessageIds(new Set());
+            }
+        });
+
+        return unsubscribe;
+    }, [navigation, selectedMessageIds.size]);
+
     /* ==================== UI ==================== */
+    const isSelectionMode = selectedMessageIds.size > 0;
+
     return (
-        <SafeAreaView style={[chatScreenStyles.container, { backgroundColor: theme.chatBackgroundLight }]}>
-            {/* Header */}
-            <View style={[chatScreenStyles.header, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
+        <SafeAreaView style={[styles.container, { backgroundColor: theme.chatBackgroundLight }]}>
+            {/* Header - Show selection bar if messages are selected */}
+            {isSelectionMode ? (
+                <View style={[styles.header, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
                 <TouchableOpacity
-                    style={chatScreenStyles.backButton}
+                        style={styles.backButton}
+                        onPress={handleClearSelection}
+                    >
+                        <Image
+                            source={require('../../../assets/icons/back.png')}
+                            style={[styles.backIcon, { tintColor: theme.textPrimary }]}
+                            resizeMode="contain"
+                        />
+                    </TouchableOpacity>
+                    
+                    <View style={styles.headerInfo}>
+                        <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>
+                            {selectedMessageIds.size} {selectedMessageIds.size === 1 ? 'message' : 'messages'}
+                        </Text>
+                    </View>
+                    
+                    <View style={styles.headerActions}>
+                        {/* Star icon (UI only) */}
+                        <TouchableOpacity style={styles.headerActionButton}>
+                            <Image
+                                source={require('../../../assets/icons/favourite.png')}
+                                style={[styles.headerActionIcon, { tintColor: theme.textPrimary }]}
+                                resizeMode="contain"
+                            />
+                        </TouchableOpacity>
+                        
+                        {/* Delete icon (FUNCTIONAL) */}
+                        <TouchableOpacity 
+                            style={styles.headerActionButton}
+                            onPress={handleDeleteMessages}
+                        >
+                            <Image
+                                source={require('../../../assets/icons/delete.png')}
+                                style={[
+                                    styles.headerActionIcon,
+                                    {
+                                        // Always black delete icon
+                                        tintColor: '#000000',
+                                    },
+                                ]}
+                                resizeMode="contain"
+                            />
+                        </TouchableOpacity>
+                        
+                        {/* Forward icon (UI only) - reuse chat icon as a forward/share analogue */}
+                        <TouchableOpacity style={styles.headerActionButton}>
+                            <Image
+                                source={require('../../../assets/icons/whatsapp-chat.png')}
+                                style={[styles.headerActionIcon, { tintColor: theme.textPrimary }]}
+                                resizeMode="contain"
+                            />
+                        </TouchableOpacity>
+                        
+                        {/* Menu icon (UI only) */}
+                        <TouchableOpacity style={styles.menuButton}>
+                            <Image
+                                source={require('../../../assets/icons/menu-bar.png')}
+                                style={[styles.menuIcon, { tintColor: theme.textPrimary }]}
+                                resizeMode="contain"
+                            />
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            ) : (
+                <View style={[styles.header, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
+                <TouchableOpacity
+                    style={styles.backButton}
                     onPress={() => navigation.goBack()}
                 >
                     <Image
                         source={require('../../../assets/icons/back.png')}
-                        style={[chatScreenStyles.backIcon, { tintColor: theme.textPrimary }]}
+                        style={[styles.backIcon, { tintColor: theme.textPrimary }]}
                         resizeMode="contain"
                     />
                 </TouchableOpacity>
                 
-                <View style={chatScreenStyles.avatarContainer}>
+                <View style={styles.avatarContainer}>
                     {isMetaAIChat ? (
                         <MetaAIAvatar size={40} />
                     ) : (
@@ -1059,15 +2473,15 @@ export const ChatScreen = () => {
                                 return (
                                     <Image
                                         source={require('../../../assets/icons/unknown-user.png')}
-                                        style={chatScreenStyles.unknownUserAvatar}
+                                        style={styles.unknownUserAvatar}
                                         resizeMode="contain"
                                     />
                                 );
                             } else {
                                 // Show initials avatar
                                 return (
-                                    <View style={[chatScreenStyles.avatar, { backgroundColor: theme.whatsappGreen }]}>
-                                        <Text style={[chatScreenStyles.avatarText, { color: theme.white }]}>
+                                    <View style={[styles.avatar, { backgroundColor: theme.whatsappGreen }]}>
+                                        <Text style={[styles.avatarText, { color: theme.white }]}>
                                             {isSelfChat ? 'M' : (chatName?.charAt(0) || '?')}
                                         </Text>
                                     </View>
@@ -1078,7 +2492,7 @@ export const ChatScreen = () => {
                 </View>
                 
                 <TouchableOpacity
-                    style={chatScreenStyles.headerInfo}
+                    style={styles.headerInfo}
                     onPress={() => {
                         if (!isMetaAIChat && !isSelfChat && otherUserUid) {
                             (navigation as any).navigate('ContactProfile', {
@@ -1093,25 +2507,25 @@ export const ChatScreen = () => {
                 >
                     {isMetaAIChat ? (
                         <>
-                            <Text style={[chatScreenStyles.headerTitle, { color: theme.textPrimary }]} numberOfLines={1}>
+                            <Text style={[styles.headerTitle, { color: theme.textPrimary }]} numberOfLines={1}>
                                 Meta AI
                             </Text>
-                            <Text style={[chatScreenStyles.headerSubtitle, { color: theme.textSecondary }]} numberOfLines={1}>
+                            <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]} numberOfLines={1}>
                                 with Llama 4
                             </Text>
                         </>
                     ) : (
                         <>
-                            <Text style={[chatScreenStyles.headerTitle, { color: theme.textPrimary }]} numberOfLines={1}>
+                            <Text style={[styles.headerTitle, { color: theme.textPrimary }]} numberOfLines={1}>
                                 {isSelfChat ? 'My Number (You)' : (chatName || otherUserPhone || 'Unknown')}
                             </Text>
                             {!isSelfChat && otherUserPhone && chatName !== otherUserPhone && (
-                                <Text style={[chatScreenStyles.headerSubtitle, { color: theme.textSecondary }]} numberOfLines={1}>
+                                <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]} numberOfLines={1}>
                                     {otherUserPhone}
                                 </Text>
                             )}
                             {isSelfChat && (
-                                <Text style={[chatScreenStyles.headerSubtitle, { color: theme.textSecondary }]} numberOfLines={1}>
+                                <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]} numberOfLines={1}>
                                     Message yourself
                                 </Text>
                             )}
@@ -1119,41 +2533,41 @@ export const ChatScreen = () => {
                     )}
                 </TouchableOpacity>
                 
-                <View style={chatScreenStyles.headerActions}>
+                <View style={styles.headerActions}>
                     {isMetaAIChat ? (
                         <TouchableOpacity 
-                            style={chatScreenStyles.menuButton}
+                            style={styles.menuButton}
                             onPress={handleMenuPress}
                         >
                             <Image
                                 source={require('../../../assets/icons/menu-bar.png')}
-                                style={[chatScreenStyles.menuIcon, { tintColor: theme.textPrimary }]}
+                                style={[styles.menuIcon, { tintColor: theme.textPrimary }]}
                                 resizeMode="contain"
                             />
                         </TouchableOpacity>
                     ) : (
                         <>
-                            <TouchableOpacity style={chatScreenStyles.headerActionButton}>
+                            <TouchableOpacity style={styles.headerActionButton}>
                                 <Image
                                     source={require('../../../assets/icons/video-call.png')}
-                                    style={[chatScreenStyles.headerActionIcon, { tintColor: theme.textPrimary }]}
+                                    style={[styles.headerActionIcon, { tintColor: theme.textPrimary }]}
                                     resizeMode="contain"
                                 />
                             </TouchableOpacity>
-                            <TouchableOpacity style={chatScreenStyles.headerActionButton}>
+                            <TouchableOpacity style={styles.headerActionButton}>
                                 <Image
                                     source={require('../../../assets/icons/whatsapp-calls.png')}
-                                    style={[chatScreenStyles.headerActionIcon, { tintColor: theme.textPrimary }]}
+                                    style={[styles.headerActionIcon, { tintColor: theme.textPrimary }]}
                                     resizeMode="contain"
                                 />
                             </TouchableOpacity>
                             <TouchableOpacity 
-                                style={chatScreenStyles.menuButton}
+                                style={styles.menuButton}
                                 onPress={handleMenuPress}
                             >
                                 <Image
                                 source={require('../../../assets/icons/menu-bar.png')}
-                                style={[chatScreenStyles.menuIcon, { tintColor: theme.textPrimary }]}
+                                style={[styles.menuIcon, { tintColor: theme.textPrimary }]}
                                 resizeMode="contain"
                             />
                             </TouchableOpacity>
@@ -1161,11 +2575,12 @@ export const ChatScreen = () => {
                     )}
                 </View>
             </View>
+            )}
 
             {/* Messages with Background (wallpaper edge-to-edge) */}
             <ImageBackground
                 source={require('../../../assets/images/Wchat-background.jpg')}
-                style={[chatScreenStyles.backgroundImage, { backgroundColor: theme.chatBackgroundLight }]}
+                style={[styles.backgroundImage, { backgroundColor: theme.chatBackgroundLight }]}
                 // Very light wallpaper so icons are subtle, like WhatsApp
                 // In dark mode, darken the wallpaper significantly
                 imageStyle={{ opacity: isDark ? 0.05 : 0.15 }}
@@ -1185,16 +2600,16 @@ export const ChatScreen = () => {
                         data={messagesForList}
                         keyExtractor={item => item.id}
                         renderItem={renderMessage}
-                        contentContainerStyle={chatScreenStyles.messageList}
+                        contentContainerStyle={styles.messageList}
                         inverted
                         showsVerticalScrollIndicator={false}
                         ListFooterComponent={() => (
                             <>
                                 {/* Encryption banner: one-time header at top of chat (non Meta AI) */}
                                 {!isMetaAIChat && (
-                                    <View style={[chatScreenStyles.encryptionBanner, { backgroundColor: theme.encryptionBanner }]}>
-                                        <Text style={chatScreenStyles.encryptionIcon}>🔒</Text>
-                                        <Text style={[chatScreenStyles.encryptionText, { color: theme.textSecondary }]}>
+                                    <View style={[styles.encryptionBanner, { backgroundColor: theme.encryptionBanner }]}>
+                                        <Text style={styles.encryptionIcon}>🔒</Text>
+                                        <Text style={[styles.encryptionText, { color: theme.textSecondary }]}>
                                             Messages and calls are end-to-end encrypted. Only people in this chat can read, listen to, or share them. Learn more.
                                         </Text>
                                     </View>
@@ -1203,8 +2618,8 @@ export const ChatScreen = () => {
                                 {/* Meta AI system disclaimer (only for Meta AI chats with messages) */}
                                 {isMetaAIChat && messages && messages.length > 0 && (
                                     <View style={{ paddingVertical: spacing.sm }}>
-                                        <View style={chatScreenStyles.systemMessage}>
-                                            <Text style={chatScreenStyles.systemMessageText}>
+                                        <View style={styles.systemMessage}>
+                                            <Text style={styles.systemMessageText}>
                                                 Messages are generated by AI. Some may be inaccurate or inappropriate. Learn more.
                                             </Text>
                                         </View>
@@ -1221,22 +2636,83 @@ export const ChatScreen = () => {
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
             >
-                <View style={[chatScreenStyles.inputContainer, { backgroundColor: theme.background }]}>
+                {/* Pending Media Preview Row */}
+                {pendingMedia && (
+                    <View style={[styles.pendingMediaContainer, { backgroundColor: theme.background }]}>
+                        <View style={[styles.pendingMediaRow, { backgroundColor: theme.backgroundInput }]}>
+                            {/* Thumbnail or icon */}
+                            {pendingMedia.mediaType === 'image' && pendingMedia.file.uri ? (
+                                <Image
+                                    source={{ uri: pendingMedia.file.uri }}
+                                    style={styles.pendingMediaThumbnail}
+                                    resizeMode="cover"
+                                />
+                            ) : pendingMedia.mediaType === 'video' && pendingMedia.file.uri ? (
+                                <View style={styles.pendingMediaThumbnail}>
+                                    <Image
+                                        source={{ uri: pendingMedia.file.uri }}
+                                        style={styles.pendingMediaThumbnail}
+                                        resizeMode="cover"
+                                    />
+                                    <View style={styles.videoPlayOverlay}>
+                                        <Text style={styles.videoPlayIcon}>▶</Text>
+                                    </View>
+                                </View>
+                            ) : (
+                                <View style={[styles.pendingMediaIconContainer, { backgroundColor: theme.whatsappGreen }]}>
+                                    <Text style={[styles.pendingMediaIcon, { color: theme.white }]}>
+                                        {pendingMedia.mediaType === 'audio' ? '🎵' : '📄'}
+                                    </Text>
+                                </View>
+                            )}
+                            
+                            {/* File name */}
+                            <View style={styles.pendingMediaInfo}>
+                                <Text 
+                                    style={[styles.pendingMediaFileName, { color: theme.textPrimary }]}
+                                    numberOfLines={1}
+                                >
+                                    {pendingMedia.file.fileName || 
+                                     pendingMedia.file.name || 
+                                     (pendingMedia.mediaType === 'image' ? 'Image' : 
+                                      pendingMedia.mediaType === 'video' ? 'Video' : 
+                                      pendingMedia.mediaType === 'audio' ? 'Audio' : 'File')}
+                                </Text>
+                                {pendingMedia.file.fileSize && (
+                                    <Text style={[styles.pendingMediaFileSize, { color: theme.textSecondary }]}>
+                                        {(pendingMedia.file.fileSize / 1024 / 1024).toFixed(2)} MB
+                                    </Text>
+                                )}
+                            </View>
+                            
+                            {/* Cancel button */}
+                            <TouchableOpacity
+                                style={styles.pendingMediaCancelButton}
+                                onPress={() => setPendingMedia(null)}
+                                activeOpacity={0.7}
+                            >
+                                <Text style={[styles.pendingMediaCancelIcon, { color: theme.textSecondary }]}>❌</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                )}
+                
+                <View style={[styles.inputContainer, { backgroundColor: theme.background }]}>
                     {/* Main pill container: sticker + input + attach + camera (WhatsApp-like) */}
-                    <View style={[chatScreenStyles.inputWrapper, { backgroundColor: theme.backgroundInput }]}>
+                    <View style={[styles.inputWrapper, { backgroundColor: theme.backgroundInput }]}>
                         {/* Emoji / keyboard toggle on the left inside the pill (WhatsApp-like) */}
                         <TouchableOpacity
-                            style={chatScreenStyles.stickerButton}
+                            style={styles.stickerButton}
                             onPress={handleEmojiToggle}
                             activeOpacity={0.7}
                         >
                             <Image
                                 source={
-                                    isEmojiKeyboardOpen
+                                    isKeyboardVisible
                                         ? require('../../../assets/icons/keyboard.png')
                                         : require('../../../assets/icons/sticker.png')
                                 }
-                                style={[chatScreenStyles.stickerIcon, { tintColor: theme.iconGray }]}
+                                style={[styles.stickerIcon, { tintColor: theme.iconGray }]}
                                 resizeMode="contain"
                             />
                         </TouchableOpacity>
@@ -1244,13 +2720,12 @@ export const ChatScreen = () => {
                         {/* Text input */}
                         <TextInput
                             ref={inputRef}
-                            style={[chatScreenStyles.input, { color: theme.textPrimary }]}
+                            style={[styles.input, { color: theme.textPrimary }]}
                             placeholder="Message"
                             placeholderTextColor={theme.textTertiary}
                             value={text}
                             onFocus={() => {
-                                // When user taps directly into input, default back to text keyboard icon.
-                                setIsEmojiKeyboardOpen(false);
+                                // Keyboard will show, visibility state updated via keyboardDidShow listener
                             }}
                             onChangeText={(newText) => {
                                 const prevText = prevTextRef.current;
@@ -1280,19 +2755,25 @@ export const ChatScreen = () => {
                         />
 
                         {/* Attach and camera icons on the right inside the pill */}
-                        {!text.trim() && (
+                        {!text.trim() && !pendingMedia && (
                             <>
-                                <TouchableOpacity style={chatScreenStyles.attachButton}>
+                                <TouchableOpacity 
+                                    style={styles.attachButton}
+                                    onPress={handleAttachDocument}
+                                >
                                     <Image
                                         source={require('../../../assets/icons/attach-document.png')}
-                                        style={[chatScreenStyles.attachIcon, { tintColor: theme.iconGray }]}
+                                        style={[styles.attachIcon, { tintColor: theme.iconGray }]}
                                         resizeMode="contain"
                                     />
                                 </TouchableOpacity>
-                                <TouchableOpacity style={chatScreenStyles.cameraButton}>
+                                <TouchableOpacity 
+                                    style={styles.cameraButton}
+                                    onPress={handleOpenCamera}
+                                >
                                     <Image
                                         source={require('../../../assets/icons/whatsapp-camera.png')}
-                                        style={[chatScreenStyles.cameraIcon, { tintColor: theme.iconGray }]}
+                                        style={[styles.cameraIcon, { tintColor: theme.iconGray }]}
                                         resizeMode="contain"
                                     />
                                 </TouchableOpacity>
@@ -1301,21 +2782,78 @@ export const ChatScreen = () => {
                     </View>
                     
                     {/* Send button or mic button to the right of the pill */}
-                    {text.trim() ? (
+                    {(text.trim() || pendingMedia) ? (
                         <TouchableOpacity
-                            style={[chatScreenStyles.sendButton, { backgroundColor: theme.whatsappGreen }]}
+                            style={[styles.sendButton, { backgroundColor: theme.whatsappGreen }]}
                             onPress={handleSendMessage}
                         >
-                            <Text style={[chatScreenStyles.sendIcon, { color: theme.white }]}>➤</Text>
+                            <Text style={[styles.sendIcon, { color: theme.white }]}>➤</Text>
                         </TouchableOpacity>
                     ) : (
-                        <TouchableOpacity style={chatScreenStyles.micButton}>
+                        <View
+                            onTouchMove={(e: any) => {
+                                // Detect slide-to-cancel gesture
+                                if (isRecording && micButtonRef.current) {
+                                    const { pageX, pageY } = e.nativeEvent;
+                                    micButtonRef.current.measure((x, y, width, height, pageXBtn, pageYBtn) => {
+                                        const buttonCenterX = pageXBtn + width / 2;
+                                        const buttonCenterY = pageYBtn + height / 2;
+                                        const distance = Math.sqrt(
+                                            Math.pow(pageX - buttonCenterX, 2) + Math.pow(pageY - buttonCenterY, 2)
+                                        );
+                                        // If finger is more than 50px away from button center, cancel
+                                        if (distance > 50) {
+                                            setIsSlidingToCancel(true);
+                                        } else {
+                                            setIsSlidingToCancel(false);
+                                        }
+                                    });
+                                }
+                            }}
+                        >
+                            <TouchableOpacity
+                                ref={micButtonRef}
+                                style={[
+                                    styles.micButton,
+                                    isRecording && { backgroundColor: theme.textSecondary },
+                                    isSlidingToCancel && { backgroundColor: '#FF3B30' }
+                                ]}
+                                onPressIn={handleStartRecording}
+                                onPressOut={() => {
+                                    // Check if user slid away (cancel) or released normally (send)
+                                    if (isSlidingToCancel) {
+                                        handleStopRecordingAndSend(true); // Cancel
+                                    } else {
+                                        handleStopRecordingAndSend(false); // Send
+                                    }
+                                }}
+                                activeOpacity={0.8}
+                            >
+                                {isRecording ? (
+                                    <View style={{ alignItems: 'center' }}>
+                                        {isSlidingToCancel ? (
+                                            <Text style={styles.micTimerText}>
+                                                Slide to cancel
+                                            </Text>
+                                        ) : (
+                                            <Text style={styles.micTimerText}>
+                                                {Math.floor(recordSecs / 60)}:{(recordSecs % 60).toString().padStart(2, '0')}
+                                            </Text>
+                                        )}
+                                    </View>
+                                ) : (
                             <Image
                                 source={require('../../../assets/icons/voice-message.png')}
-                                style={[chatScreenStyles.micIcon, { tintColor: theme.iconGray }]}
+                                        style={[
+                                            styles.micIcon,
+                                            // WhatsApp-like: white mic icon on green circular button
+                                            { tintColor: theme.white }
+                                        ]}
                                 resizeMode="contain"
                             />
+                                )}
                         </TouchableOpacity>
+                        </View>
                     )}
                 </View>
             </KeyboardAvoidingView>
@@ -1329,3 +2867,5 @@ export const ChatScreen = () => {
         </SafeAreaView>
     );
 };
+
+export { ChatScreen };

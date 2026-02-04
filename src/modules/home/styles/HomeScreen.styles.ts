@@ -134,6 +134,11 @@ export const homeScreenStyles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.xs,
   },
+  voicePreviewIcon: {
+    width: spacing.iconSize * 0.8,
+    height: spacing.iconSize * 0.8,
+    tintColor: colors.textSecondary,
+  },
   messageText: {
     fontSize: typography.fontSize.sm,
     fontFamily: typography.fontFamily.regular,
